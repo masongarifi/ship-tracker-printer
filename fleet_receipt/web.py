@@ -48,8 +48,20 @@ def create_app(
     def profile_page(fleet_profile: str, heading: str):
         refreshed_at = _aware_utc(clock())
         report = _render_profile(active_cache, refreshed_at, fleet_profile)
+        navigation = (
+            (
+                "HAL + Seabourn",
+                str(app.url_path_for("combined_fleet_page")),
+            ),
+            ("Celebrity", str(app.url_path_for("celebrity_page"))),
+            (
+                "Royal Caribbean",
+                str(app.url_path_for("royal_caribbean_page")),
+            ),
+            ("All Fleets", str(app.url_path_for("all_fleets_page"))),
+        )
         return HTMLResponse(
-            _receipt_html(report, refreshed_at, heading),
+            _receipt_html(report, refreshed_at, heading, navigation),
             headers={"Cache-Control": "no-store"},
         )
 
@@ -67,6 +79,14 @@ def create_app(
             context={"dashboard": dashboard, "version": __version__},
             headers={"Cache-Control": "no-store"},
         )
+
+    @app.get(
+        "/hal-seabourn",
+        response_class=HTMLResponse,
+        name="combined_fleet_page",
+    )
+    def combined_fleet_page():
+        return profile_page("main", "HAL + Seabourn")
 
     @app.get("/hal", response_class=HTMLResponse)
     def hal_page():
@@ -185,10 +205,19 @@ def _render_profile(
         raise HTTPException(status_code=404, detail="Unknown fleet profile") from exc
 
 
-def _receipt_html(report: str, refreshed_at: datetime, heading: str) -> str:
+def _receipt_html(
+    report: str,
+    refreshed_at: datetime,
+    heading: str,
+    navigation,
+) -> str:
     safe_report = html.escape(report)
     refreshed = html.escape(refreshed_at.strftime("%Y-%m-%d %H:%M:%S UTC"))
     safe_heading = html.escape(heading)
+    navigation_html = "\n".join(
+        f'      <a href="{html.escape(path)}">{html.escape(label)}</a>'
+        for label, path in navigation
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -270,10 +299,7 @@ def _receipt_html(report: str, refreshed_at: datetime, heading: str) -> str:
     <h1>Fleet Operations Brief &mdash; {safe_heading}</h1>
     <p class="refreshed">Page refreshed: {refreshed} &middot; Auto-refreshes every 30 seconds</p>
     <nav aria-label="Fleet reports">
-      <a href="/">HAL + Seabourn</a>
-      <a href="/celebrity">Celebrity</a>
-      <a href="/royal-caribbean">Royal Caribbean</a>
-      <a href="/all">All Fleets</a>
+{navigation_html}
     </nav>
     <pre aria-label="Fleet operations receipt">{safe_report}</pre>
   </main>

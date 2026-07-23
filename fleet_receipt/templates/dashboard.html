@@ -76,7 +76,7 @@
       </div>
       <div class="fleet-grid">
         {% for fleet in dashboard.fleet_cards %}
-          <a class="fleet-card" href="/{{ fleet.slug }}">
+          <a class="fleet-card" href="{{ url_for(fleet.route_name) }}">
             <span class="fleet-logo" aria-hidden="true">{{ fleet.mark }}</span>
             <span class="fleet-card-title">{{ fleet.name }}</span>
             <span class="fleet-count">{{ fleet.total }} ships</span>

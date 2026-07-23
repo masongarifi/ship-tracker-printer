@@ -161,6 +161,7 @@ Those receipt pages automatically refresh every 30 seconds.
 Available routes:
 
 - `/` — Fleet Tracker dashboard
+- `/hal-seabourn` — combined Holland America and Seabourn receipt report
 - `/hal` — Holland America receipt report
 - `/seabourn` — Seabourn receipt report
 - `/celebrity` — Celebrity Cruises report

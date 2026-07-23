@@ -168,7 +168,7 @@ def test_main_page_links_to_celebrity_card(tmp_path) -> None:
     response = _client(cache).get("/")
 
     assert response.status_code == 200
-    assert 'href="/celebrity"' in response.text
+    assert 'href="http://testserver/celebrity"' in response.text
     assert "Celebrity Reporting:" not in response.text
     assert "Celebrity Apex" in response.text
 
@@ -231,6 +231,50 @@ def test_existing_hal_and_seabourn_receipt_routes_remain_separate(tmp_path) -> N
     assert "Seabourn Reporting: 1 / 5" in seabourn.text
     assert "SEABOURN QUEST" in seabourn.text
     assert "KONINGSDAM" not in seabourn.text
+
+
+def test_receipt_navigation_uses_named_fleet_routes(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam"))
+    cache.update(_position(vessel_name="Seabourn Quest"))
+    client = _client(cache)
+
+    source_page = client.get("/celebrity")
+    expected_links = {
+        "HAL + Seabourn": "/hal-seabourn",
+        "Celebrity": "/celebrity",
+        "Royal Caribbean": "/royal-caribbean",
+        "All Fleets": "/all",
+    }
+
+    for label, path in expected_links.items():
+        assert f'<a href="{path}">{label}</a>' in source_page.text
+
+    combined = client.get(expected_links["HAL + Seabourn"])
+    celebrity = client.get(expected_links["Celebrity"])
+    royal_caribbean = client.get(expected_links["Royal Caribbean"])
+    all_fleets = client.get(expected_links["All Fleets"])
+
+    assert combined.status_code == 200
+    assert "HAL Reporting: 1 / 11" in combined.text
+    assert "Seabourn Reporting: 1 / 5" in combined.text
+    assert "Celebrity Reporting:" not in combined.text
+    assert celebrity.status_code == 200
+    assert "Celebrity Reporting:" in celebrity.text
+    assert royal_caribbean.status_code == 200
+    assert "Royal Caribbean Reporting:" in royal_caribbean.text
+    assert all_fleets.status_code == 200
+    assert "HAL Reporting:" in all_fleets.text
+    assert "Celebrity Reporting:" in all_fleets.text
+    assert "Royal Caribbean Reporting:" in all_fleets.text
+
+
+def test_landing_page_remains_at_root(tmp_path) -> None:
+    response = _client(PositionCache(tmp_path / "positions.sqlite3")).get("/")
+
+    assert response.status_code == 200
+    assert "<title>Fleet Tracker · Live Cruise Fleet Dashboard</title>" in response.text
+    assert "FLEET OPERATIONS BRIEF" not in response.text
 
 
 def test_dashboard_map_contains_required_cached_ship_fields(tmp_path) -> None:

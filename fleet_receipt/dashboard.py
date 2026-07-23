@@ -13,24 +13,28 @@ FLEET_PROFILES = (
         "name": "Holland America",
         "config_name": "Holland America Line",
         "mark": "HAL",
+        "route_name": "hal_page",
     },
     {
         "slug": "seabourn",
         "name": "Seabourn",
         "config_name": "Seabourn",
         "mark": "SBN",
+        "route_name": "seabourn_page",
     },
     {
         "slug": "celebrity",
         "name": "Celebrity",
         "config_name": "Celebrity Cruises",
         "mark": "CEL",
+        "route_name": "celebrity_page",
     },
     {
         "slug": "royal-caribbean",
         "name": "Royal Caribbean",
         "config_name": "Royal Caribbean International",
         "mark": "RCI",
+        "route_name": "royal_caribbean_page",
     },
 )
 
