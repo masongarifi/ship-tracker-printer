@@ -1,0 +1,15 @@
+{
+  "receipt_width": 42,
+  "stale_after_hours": 6,
+  "seattle_timezone": "America/Los_Angeles",
+  "update_interval_minutes": 15,
+  "provider": "fixtures",
+  "printer_backend": "text",
+  "gpio": {
+    "enabled": false,
+    "pin": null,
+    "debounce_seconds": 0.25,
+    "actions": {"fleet_position_report": null}
+  }
+}
+

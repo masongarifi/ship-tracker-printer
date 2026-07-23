@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fleet-receipt"
+version = "0.1.0"
+description = "Offline-first cruise fleet position receipts"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["PyYAML>=6.0", "tzdata>=2025.2", "websockets>=12,<16"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.5"]
+timezone = ["timezonefinder>=6.5"]
+
+[project.scripts]
+fleet-receipt = "fleet_receipt.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fleet_receipt*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

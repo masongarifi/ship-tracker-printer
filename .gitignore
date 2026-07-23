@@ -1,0 +1,49 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.*
+
+# Virtual environments
+.venv/
+.venv-windows/
+venv/
+env/
+
+# Python caches and build output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Runtime data and generated output
+work/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Vessel definitions and public fixture data are intentionally tracked:
+# config/fleet.yaml
+# config/settings.yaml
+# fixtures/vessel_positions.json
