@@ -41,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="main",
         help=(
             "Fleet profile to display: main, celebrity, royal-caribbean, "
+            "carnival, princess, cunard, p-and-o, costa, aida, "
             "or all (default: main)"
         ),
     )

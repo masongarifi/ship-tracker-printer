@@ -82,6 +82,119 @@
         {"name": "Voyager of the Seas", "imo": "9161716", "mmsi": "311317000", "active": true, "notes": "IMO and MMSI supplied"},
         {"name": "Wonder of the Seas", "imo": "9838345", "mmsi": "311001033", "active": true, "notes": "IMO and MMSI supplied"}
       ]
+    },
+    {
+      "name": "Carnival Cruise Line",
+      "profile": "carnival",
+      "vessels": [
+        {"name": "Carnival Adventure", "imo": "9192351", "mmsi": "311001595", "active": true, "aliases": ["Pacific Adventure", "Golden Princess"], "notes": "Transferred from P&O Cruises Australia in 2025"},
+        {"name": "Carnival Breeze", "imo": "9555723", "mmsi": "354842000", "active": true},
+        {"name": "Carnival Celebration", "imo": "9837456", "mmsi": "311001223", "active": true},
+        {"name": "Carnival Conquest", "imo": "9198355", "mmsi": "357657000", "active": true},
+        {"name": "Carnival Dream", "imo": "9378474", "mmsi": "370490000", "active": true},
+        {"name": "Carnival Elation", "imo": "9118721", "mmsi": "355831000", "active": true},
+        {"name": "Carnival Encounter", "imo": "9192363", "mmsi": "311001596", "active": true, "aliases": ["Pacific Encounter", "Star Princess"], "notes": "Transferred from P&O Cruises Australia in 2025"},
+        {"name": "Carnival Firenze", "imo": "9801691", "mmsi": "352003546", "active": true, "aliases": ["Costa Firenze"]},
+        {"name": "Carnival Freedom", "imo": "9333149", "mmsi": "371154000", "active": true},
+        {"name": "Carnival Glory", "imo": "9198367", "mmsi": "357659000", "active": true},
+        {"name": "Carnival Horizon", "imo": "9767091", "mmsi": "370039000", "active": true},
+        {"name": "Carnival Jubilee", "imo": "9851737", "mmsi": "311001390", "active": true},
+        {"name": "Carnival Legend", "imo": "9224726", "mmsi": "229857000", "active": true},
+        {"name": "Carnival Liberty", "imo": "9278181", "mmsi": "371083000", "active": true},
+        {"name": "Carnival Luminosa", "imo": "9398905", "mmsi": "311001201", "active": true, "aliases": ["Costa Luminosa"]},
+        {"name": "Carnival Magic", "imo": "9378486", "mmsi": "370491000", "active": true},
+        {"name": "Mardi Gras", "imo": "9837444", "mmsi": "311001049", "active": true, "aliases": ["Carnival Mardi Gras"]},
+        {"name": "Carnival Miracle", "imo": "9237357", "mmsi": "354277000", "active": true},
+        {"name": "Carnival Panorama", "imo": "9802384", "mmsi": "374527000", "active": true},
+        {"name": "Carnival Paradise", "imo": "9120877", "mmsi": "355833000", "active": true},
+        {"name": "Carnival Pride", "imo": "9223954", "mmsi": "354215000", "active": true},
+        {"name": "Carnival Radiance", "imo": "9172648", "mmsi": "355263000", "active": true, "aliases": ["Carnival Victory"]},
+        {"name": "Carnival Spirit", "imo": "9188647", "mmsi": "229136000", "active": true},
+        {"name": "Carnival Splendor", "imo": "9333163", "mmsi": "372808000", "active": true},
+        {"name": "Carnival Sunrise", "imo": "9138850", "mmsi": "308045000", "active": true, "aliases": ["Carnival Triumph"]},
+        {"name": "Carnival Sunshine", "imo": "9070058", "mmsi": "308017000", "active": true, "aliases": ["Carnival Destiny"]},
+        {"name": "Carnival Valor", "imo": "9236389", "mmsi": "354298000", "active": true},
+        {"name": "Carnival Venezia", "imo": "9801689", "mmsi": "311001253", "active": true, "aliases": ["Costa Venezia"]},
+        {"name": "Carnival Vista", "imo": "9692569", "mmsi": "356883000", "active": true}
+      ]
+    },
+    {
+      "name": "Princess Cruises",
+      "profile": "princess",
+      "vessels": [
+        {"name": "Caribbean Princess", "imo": "9215490", "mmsi": "310423000", "active": true},
+        {"name": "Coral Princess", "imo": "9229659", "mmsi": "310376000", "active": true},
+        {"name": "Crown Princess", "imo": "9293399", "mmsi": "310500000", "active": true},
+        {"name": "Diamond Princess", "imo": "9228198", "mmsi": "235103359", "active": true},
+        {"name": "Discovery Princess", "imo": "9837468", "mmsi": "310812000", "active": true},
+        {"name": "Emerald Princess", "imo": "9333151", "mmsi": "310531000", "active": true},
+        {"name": "Enchanted Princess", "imo": "9807126", "mmsi": "247431900", "active": true},
+        {"name": "Grand Princess", "imo": "9104005", "mmsi": "310327000", "active": true},
+        {"name": "Island Princess", "imo": "9230402", "mmsi": "310384000", "active": true},
+        {"name": "Majestic Princess", "imo": "9614141", "mmsi": "310865000", "active": true},
+        {"name": "Regal Princess", "imo": "9584724", "mmsi": "310674000", "active": true},
+        {"name": "Royal Princess", "imo": "9584712", "mmsi": "310661000", "active": true},
+        {"name": "Ruby Princess", "imo": "9378462", "mmsi": "310567000", "active": true},
+        {"name": "Sapphire Princess", "imo": "9228186", "mmsi": "235103357", "active": true},
+        {"name": "Sky Princess", "imo": "9802396", "mmsi": "310780000", "active": true},
+        {"name": "Star Princess", "imo": "9863120", "mmsi": "310869000", "active": true, "aliases": ["STAR PRINCESS"]},
+        {"name": "Sun Princess", "imo": "9863118", "mmsi": "310841000", "active": true, "aliases": ["SUN PRINCESS"]}
+      ]
+    },
+    {
+      "name": "Cunard",
+      "profile": "cunard",
+      "vessels": [
+        {"name": "Queen Anne", "imo": "9839399", "mmsi": "310835000", "active": true, "aliases": ["QUEEN ANNE"]},
+        {"name": "Queen Elizabeth", "imo": "9477438", "mmsi": "310625000", "active": true, "aliases": ["QUEEN ELIZABETH"]},
+        {"name": "Queen Mary 2", "imo": "9241061", "mmsi": "310627000", "active": true, "aliases": ["QM2", "QUEEN MARY 2"]},
+        {"name": "Queen Victoria", "imo": "9320556", "mmsi": "310624000", "active": true, "aliases": ["QUEEN VICTORIA"]}
+      ]
+    },
+    {
+      "name": "P&O Cruises",
+      "profile": "p-and-o",
+      "vessels": [
+        {"name": "Arcadia", "imo": "9226906", "mmsi": "310459000", "active": true},
+        {"name": "Arvia", "imo": "9849693", "mmsi": "310856000", "active": true},
+        {"name": "Aurora", "imo": "9169524", "mmsi": "310556000", "active": true},
+        {"name": "Azura", "imo": "9424883", "mmsi": "310610000", "active": true},
+        {"name": "Britannia", "imo": "9614036", "mmsi": "235106595", "active": true},
+        {"name": "Iona", "imo": "9826548", "mmsi": "232025845", "active": true},
+        {"name": "Ventura", "imo": "9333175", "mmsi": "310562000", "active": true}
+      ]
+    },
+    {
+      "name": "Costa Cruises",
+      "profile": "costa",
+      "vessels": [
+        {"name": "Costa Deliziosa", "imo": "9398917", "mmsi": "247282900", "active": true, "aliases": ["COSTA DELIZIOSA"]},
+        {"name": "Costa Diadema", "imo": "9636888", "mmsi": "247353700", "active": true, "aliases": ["COSTA DIADEMA"]},
+        {"name": "Costa Fascinosa", "imo": "9479864", "mmsi": "247313500", "active": true, "aliases": ["COSTA FASCINOSA"]},
+        {"name": "Costa Favolosa", "imo": "9479852", "mmsi": "247311100", "active": true, "aliases": ["COSTA FAVOLOSA"]},
+        {"name": "Costa Fortuna", "imo": "9239783", "mmsi": "247094800", "active": true, "aliases": ["COSTA FORTUNA"], "notes": "Current through scheduled September 2026 fleet departure"},
+        {"name": "Costa Pacifica", "imo": "9378498", "mmsi": "247258100", "active": true, "aliases": ["COSTA PACIFICA"]},
+        {"name": "Costa Serena", "imo": "9343132", "mmsi": "247187600", "active": true, "aliases": ["COSTA SERENA"]},
+        {"name": "Costa Smeralda", "imo": "9781889", "mmsi": "247391900", "active": true, "aliases": ["COSTA SMERALDA"]},
+        {"name": "Costa Toscana", "imo": "9781891", "mmsi": "247431200", "active": true, "aliases": ["COSTA TOSCANA"]}
+      ]
+    },
+    {
+      "name": "AIDA Cruises",
+      "profile": "aida",
+      "vessels": [
+        {"name": "AIDAbella", "imo": "9362542", "mmsi": "247229700", "active": true, "aliases": ["AIDABELLA"]},
+        {"name": "AIDAblu", "imo": "9398888", "mmsi": "247282500", "active": true, "aliases": ["AIDABLU"]},
+        {"name": "AIDAcosma", "imo": "9781877", "mmsi": "247435300", "active": true, "aliases": ["AIDACOSMA"]},
+        {"name": "AIDAdiva", "imo": "9334856", "mmsi": "247187700", "active": true, "aliases": ["AIDADIVA"]},
+        {"name": "AIDAluna", "imo": "9334868", "mmsi": "247255400", "active": true, "aliases": ["AIDALUNA"]},
+        {"name": "AIDAmar", "imo": "9490052", "mmsi": "247312900", "active": true, "aliases": ["AIDAMAR"]},
+        {"name": "AIDAnova", "imo": "9781865", "mmsi": "247389200", "active": true, "aliases": ["AIDANOVA"]},
+        {"name": "AIDAperla", "imo": "9636967", "mmsi": "247385300", "active": true, "aliases": ["AIDAPERLA"]},
+        {"name": "AIDAprima", "imo": "9636955", "mmsi": "247353800", "active": true, "aliases": ["AIDAPRIMA"]},
+        {"name": "AIDAsol", "imo": "9490040", "mmsi": "247302900", "active": true, "aliases": ["AIDASOL"]},
+        {"name": "AIDAstella", "imo": "9601132", "mmsi": "247322800", "active": true, "aliases": ["AIDASTELLA"]}
+      ]
     }
   ]
 }

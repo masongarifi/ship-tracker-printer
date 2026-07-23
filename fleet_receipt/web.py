@@ -57,6 +57,12 @@ def create_app(
                 "Royal Caribbean",
                 str(app.url_path_for("royal_caribbean_page")),
             ),
+            ("Carnival", str(app.url_path_for("carnival_page"))),
+            ("Princess", str(app.url_path_for("princess_page"))),
+            ("Cunard", str(app.url_path_for("cunard_page"))),
+            ("P&O Cruises", str(app.url_path_for("p_and_o_page"))),
+            ("Costa", str(app.url_path_for("costa_page"))),
+            ("AIDA", str(app.url_path_for("aida_page"))),
             ("All Fleets", str(app.url_path_for("all_fleets_page"))),
         )
         return TEMPLATES.TemplateResponse(
@@ -130,6 +136,54 @@ def create_app(
         return profile_page(
             request, "royal-caribbean", "Royal Caribbean International"
         )
+
+    @app.get("/carnival", response_class=HTMLResponse)
+    def carnival_page(request: Request):
+        return profile_page(request, "carnival", "Carnival Cruise Line")
+
+    @app.get("/profile/carnival", response_class=HTMLResponse)
+    def carnival_profile_page(request: Request):
+        return profile_page(request, "carnival", "Carnival Cruise Line")
+
+    @app.get("/princess", response_class=HTMLResponse)
+    def princess_page(request: Request):
+        return profile_page(request, "princess", "Princess Cruises")
+
+    @app.get("/profile/princess", response_class=HTMLResponse)
+    def princess_profile_page(request: Request):
+        return profile_page(request, "princess", "Princess Cruises")
+
+    @app.get("/cunard", response_class=HTMLResponse)
+    def cunard_page(request: Request):
+        return profile_page(request, "cunard", "Cunard")
+
+    @app.get("/profile/cunard", response_class=HTMLResponse)
+    def cunard_profile_page(request: Request):
+        return profile_page(request, "cunard", "Cunard")
+
+    @app.get("/p-and-o", response_class=HTMLResponse)
+    def p_and_o_page(request: Request):
+        return profile_page(request, "p-and-o", "P&O Cruises")
+
+    @app.get("/profile/p-and-o", response_class=HTMLResponse)
+    def p_and_o_profile_page(request: Request):
+        return profile_page(request, "p-and-o", "P&O Cruises")
+
+    @app.get("/costa", response_class=HTMLResponse)
+    def costa_page(request: Request):
+        return profile_page(request, "costa", "Costa Cruises")
+
+    @app.get("/profile/costa", response_class=HTMLResponse)
+    def costa_profile_page(request: Request):
+        return profile_page(request, "costa", "Costa Cruises")
+
+    @app.get("/aida", response_class=HTMLResponse)
+    def aida_page(request: Request):
+        return profile_page(request, "aida", "AIDA Cruises")
+
+    @app.get("/profile/aida", response_class=HTMLResponse)
+    def aida_profile_page(request: Request):
+        return profile_page(request, "aida", "AIDA Cruises")
 
     @app.get("/all", response_class=HTMLResponse)
     def all_fleets_page(request: Request):

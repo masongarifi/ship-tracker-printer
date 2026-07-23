@@ -1,11 +1,25 @@
 # Fleet Receipt
 
-Fleet Receipt is an offline-first Python application for producing a readable Holland America Line and Seabourn fleet operations briefing. Its target is an Epson TM-L90 connected to a Raspberry Pi; the safe text backend supports development before printer hardware is connected.
+Fleet Receipt is an offline-first Python application for producing readable
+multi-brand fleet operations briefings. Its target is an Epson TM-L90 connected
+to a Raspberry Pi; the safe text backend supports development before printer
+hardware is connected.
 
-The fleet is configuration, not application code. All 61 Holland America,
-Seabourn, Celebrity, and Royal Caribbean vessels and their IMO/MMSI identifiers
-are in `config/fleet.yaml`. The Royal Caribbean International profile contains
-30 active ships.
+The fleet is configuration, not application code. All 138 configured vessels
+and their IMO/MMSI identifiers are in `config/fleet.yaml`.
+
+| Profile | Fleet | Vessels |
+| --- | --- | ---: |
+| `hal` | Holland America Line | 11 |
+| `seabourn` | Seabourn | 5 |
+| `celebrity` | Celebrity Cruises | 15 |
+| `royal-caribbean` | Royal Caribbean International | 30 |
+| `carnival` | Carnival Cruise Line | 29 |
+| `princess` | Princess Cruises | 17 |
+| `cunard` | Cunard | 4 |
+| `p-and-o` | P&O Cruises | 7 |
+| `costa` | Costa Cruises | 9 |
+| `aida` | AIDA Cruises | 11 |
 
 ## Phase 1 capabilities
 
@@ -88,8 +102,8 @@ the vessel broadcasts them.
 One listener tracks every active ship from every configured fleet profile over
 one AISstream.io websocket connection. Because AISstream.io permits at most 50
 MMSIs per subscription, the listener rotates a deduplicated 50-ship window
-across all 61 ships every 30 seconds. Every consecutive pair of windows covers
-the full fleet. All updates are written to the same persistent SQLite cache.
+across all 138 ships every 30 seconds. Three consecutive windows cover the full
+fleet. All updates are written to the same persistent SQLite cache.
 Fleet-specific commands and web pages only filter what is displayed; they do
 not start another listener or create another database.
 
@@ -168,6 +182,12 @@ Available routes:
 - `/profile/celebrity` — alternate Celebrity Cruises route
 - `/royal-caribbean` — Royal Caribbean International report
 - `/profile/royal-caribbean` — alternate Royal Caribbean route
+- `/carnival` and `/profile/carnival` — Carnival Cruise Line report
+- `/princess` and `/profile/princess` — Princess Cruises report
+- `/cunard` and `/profile/cunard` — Cunard report
+- `/p-and-o` and `/profile/p-and-o` — P&O Cruises report
+- `/costa` and `/profile/costa` — Costa Cruises report
+- `/aida` and `/profile/aida` — AIDA Cruises report
 - `/all` — every configured fleet, grouped by cruise line
 - `/search?q=...` — ship search by name, IMO, or MMSI
 - `/ship/{ship-name}` — cached vessel details
@@ -204,6 +224,23 @@ To preview every configured fleet:
 ```bash
 fleet-receipt preview --cached --fleet all
 ```
+
+To add another fleet, append one cruise-line object to `config/fleet.yaml` with
+a stable `profile`, official display `name`, and active vessels. Each vessel
+requires its official name, validated seven-digit IMO, and current nine-digit
+MMSI. Optional `aliases` remain separate from the display name and participate
+in search. Add one entry to `FLEET_PROFILES` for its homepage card and one pair
+of generic web routes that reuse `profile_page`; no listener or database work is
+needed.
+
+Fleet membership was checked against Carnival Corporation's May 31, 2026 fleet
+report and current brand fleet pages. IMO and current MMSI values were
+cross-checked against public AIS vessel registries where available. Carnival
+Adventure and Carnival Encounter are included under Carnival following the
+closure of P&O Cruises Australia; that former brand is not configured
+separately. Announced, ordered, retired, scrapped, and transferred-out ships are
+excluded. Costa Fortuna remains included through its scheduled September 2026
+departure.
 
 Optional bind overrides are available for local troubleshooting:
 

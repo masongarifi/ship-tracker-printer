@@ -43,6 +43,8 @@ def load_fleet(
     order = []
     vessels = []
     seen = set()
+    seen_mmsis = set()
+    seen_imos = set()
     configured_profiles = set()
     for line in data.get("cruise_lines", []):
         line_name = str(line["name"]).strip()
@@ -74,10 +76,16 @@ def load_fleet(
                 raise ConfigurationError(f"Duplicate MMSI in {line_name}: {mmsi}")
             if imo in line_imos:
                 raise ConfigurationError(f"Duplicate IMO in {line_name}: {imo}")
+            if mmsi and mmsi in seen_mmsis:
+                raise ConfigurationError(f"Duplicate MMSI across fleets: {mmsi}")
+            if imo and imo in seen_imos:
+                raise ConfigurationError(f"Duplicate IMO across fleets: {imo}")
             if mmsi:
                 line_mmsis.add(mmsi)
+                seen_mmsis.add(mmsi)
             if imo:
                 line_imos.add(imo)
+                seen_imos.add(imo)
             vessels.append(
                 Vessel(
                     cruise_line=line_name,
@@ -86,6 +94,7 @@ def load_fleet(
                     mmsi=mmsi,
                     active=bool(item.get("active", True)),
                     notes=item.get("notes"),
+                    aliases=_validated_aliases(item.get("aliases"), name),
                 )
             )
     if (
@@ -109,6 +118,17 @@ def _validated_identifier(value: Any, kind: str, vessel_name: str):
         if check_digit % 10 != int(identifier[-1]):
             raise ConfigurationError(f"Malformed IMO for {vessel_name}: {identifier}")
     return identifier
+
+
+def _validated_aliases(value: Any, vessel_name: str):
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ConfigurationError(f"Aliases for {vessel_name} must be a list")
+    aliases = tuple(str(alias).strip() for alias in value if str(alias).strip())
+    if len({alias.casefold() for alias in aliases}) != len(aliases):
+        raise ConfigurationError(f"Duplicate alias for {vessel_name}")
+    return aliases
 
 
 def load_settings(path: Path = PROJECT_ROOT / "config" / "settings.yaml") -> Dict[str, Any]:

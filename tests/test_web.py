@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import json
+import html
 import re
 from fastapi.testclient import TestClient
 
@@ -253,12 +254,19 @@ def test_receipt_navigation_uses_named_fleet_routes(tmp_path) -> None:
         "HAL + Seabourn": "/hal-seabourn",
         "Celebrity": "/celebrity",
         "Royal Caribbean": "/royal-caribbean",
+        "Carnival": "/carnival",
+        "Princess": "/princess",
+        "Cunard": "/cunard",
+        "P&O Cruises": "/p-and-o",
+        "Costa": "/costa",
+        "AIDA": "/aida",
         "All Fleets": "/all",
     }
 
     for label, path in expected_links.items():
         assert re.search(
-            rf'<a class="button button-secondary" href="{path}">{re.escape(label)}</a>',
+            rf'<a class="button button-secondary" href="{path}">'
+            rf"{re.escape(html.escape(label))}</a>",
             source_page.text,
         )
 

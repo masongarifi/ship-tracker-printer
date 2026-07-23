@@ -36,6 +36,48 @@ FLEET_PROFILES = (
         "mark": "RCI",
         "route_name": "royal_caribbean_page",
     },
+    {
+        "slug": "carnival",
+        "name": "Carnival",
+        "config_name": "Carnival Cruise Line",
+        "mark": "CCL",
+        "route_name": "carnival_page",
+    },
+    {
+        "slug": "princess",
+        "name": "Princess",
+        "config_name": "Princess Cruises",
+        "mark": "PCL",
+        "route_name": "princess_page",
+    },
+    {
+        "slug": "cunard",
+        "name": "Cunard",
+        "config_name": "Cunard",
+        "mark": "CUN",
+        "route_name": "cunard_page",
+    },
+    {
+        "slug": "p-and-o",
+        "name": "P&O Cruises",
+        "config_name": "P&O Cruises",
+        "mark": "P&O",
+        "route_name": "p_and_o_page",
+    },
+    {
+        "slug": "costa",
+        "name": "Costa",
+        "config_name": "Costa Cruises",
+        "mark": "COS",
+        "route_name": "costa_page",
+    },
+    {
+        "slug": "aida",
+        "name": "AIDA",
+        "config_name": "AIDA Cruises",
+        "mark": "AIDA",
+        "route_name": "aida_page",
+    },
 )
 
 
@@ -69,8 +111,13 @@ def build_dashboard(
             {
                 **profile,
                 "total": len(vessels),
+                "reporting": len(profile_positions),
+                "unavailable": len(vessels) - len(profile_positions),
                 "underway": sum(_is_underway(position) for position in profile_positions),
-                "moored": sum(_is_moored(position) for position in profile_positions),
+                "moored": sum(
+                    _is_moored_or_anchored(position)
+                    for position in profile_positions
+                ),
             }
         )
 
@@ -84,7 +131,10 @@ def build_dashboard(
         default=None,
     )
     underway_count = sum(_is_underway(position) for position in known_positions.values())
-    moored_count = sum(_is_moored(position) for position in known_positions.values())
+    moored_count = sum(
+        _is_moored_or_anchored(position)
+        for position in known_positions.values()
+    )
 
     return {
         "fleet_cards": fleet_cards,
@@ -114,7 +164,12 @@ def search_vessels(fleet: FleetData, query: str) -> list[Vessel]:
         if vessel.active
         and any(
             needle in candidate.casefold()
-            for candidate in (vessel.name, vessel.imo or "", vessel.mmsi or "")
+            for candidate in (
+                vessel.name,
+                vessel.imo or "",
+                vessel.mmsi or "",
+                *vessel.aliases,
+            )
         )
     ]
     return sorted(matches, key=lambda vessel: vessel.name.casefold())
@@ -122,12 +177,16 @@ def search_vessels(fleet: FleetData, query: str) -> list[Vessel]:
 
 def exact_vessel_match(vessels: Iterable[Vessel], query: str) -> Optional[Vessel]:
     needle = query.strip().casefold()
-    for vessel in vessels:
+    candidates = list(vessels)
+    for vessel in candidates:
         if needle in {
             vessel.name.casefold(),
             (vessel.imo or "").casefold(),
             (vessel.mmsi or "").casefold(),
         }:
+            return vessel
+    for vessel in candidates:
+        if needle in {alias.casefold() for alias in vessel.aliases}:
             return vessel
     return None
 
@@ -239,8 +298,9 @@ def _is_underway(position: Position) -> bool:
     return is_underway_status(position.navigational_status)
 
 
-def _is_moored(position: Position) -> bool:
-    return navigational_status(position.navigational_status).casefold() == "moored"
+def _is_moored_or_anchored(position: Position) -> bool:
+    normalized = navigational_status(position.navigational_status).casefold()
+    return normalized in {"moored", "at anchor", "anchored"}
 
 
 def _speed(position: Position) -> str:

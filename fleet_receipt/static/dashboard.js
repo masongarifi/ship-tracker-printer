@@ -6,6 +6,12 @@
     Seabourn: "⚓",
     "Celebrity Cruises": "🌊",
     "Royal Caribbean International": "🛳️",
+    "Carnival Cruise Line": "🎉",
+    "Princess Cruises": "👑",
+    Cunard: "⚜️",
+    "P&O Cruises": "🧭",
+    "Costa Cruises": "☀️",
+    "AIDA Cruises": "🎨",
   });
 
   document.addEventListener("DOMContentLoaded", initializeFleetMap, { once: true });

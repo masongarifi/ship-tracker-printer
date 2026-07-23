@@ -11,6 +11,7 @@ class Vessel:
     mmsi: Optional[str] = None
     active: bool = True
     notes: Optional[str] = None
+    aliases: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

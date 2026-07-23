@@ -374,7 +374,7 @@ h2 {
 
 .fleet-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 1rem;
   margin-bottom: 2.5rem;
 }
@@ -438,6 +438,10 @@ h2 {
   border-block: 1px solid var(--line);
   color: var(--muted);
   font-size: 0.75rem;
+}
+
+.fleet-metrics > span {
+  min-width: 0;
 }
 
 .fleet-metrics strong {

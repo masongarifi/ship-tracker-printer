@@ -102,11 +102,12 @@ def test_all_configured_mmsis_are_in_one_listener_subscription() -> None:
 
     first_window = subscription_window(mmsis)
     second_window = subscription_window(mmsis, len(mmsis) - 50)
+    third_window = subscription_window(mmsis, 2 * (len(mmsis) - 50))
 
-    assert len(mmsis) == 61
+    assert len(mmsis) == 138
     assert len(first_window) == 50
     assert len(second_window) == 50
-    assert set(mmsis) == set(first_window) | set(second_window)
+    assert set(mmsis) == set(first_window) | set(second_window) | set(third_window)
     assert CELEBRITY_MMSIS <= set(mmsis)
     assert ROYAL_CARIBBEAN_MMSIS <= set(mmsis)
     with pytest.raises(AISStreamError, match="at most 50"):
@@ -156,7 +157,7 @@ def test_listener_loads_every_profile(monkeypatch, tmp_path) -> None:
     assert cli.main(["listen"]) == 130
     assert CELEBRITY_MMSIS <= received_mmsis
     assert ROYAL_CARIBBEAN_MMSIS <= received_mmsis
-    assert len(received_mmsis) == 61
+    assert len(received_mmsis) == 138
 
 
 def test_celebrity_cached_preview_filters_shared_cache(tmp_path, monkeypatch) -> None:
