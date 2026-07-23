@@ -344,3 +344,4 @@ def test_leaflet_assets_load_before_dashboard_initialization(tmp_path) -> None:
 
     assert leaflet_css < leaflet_js < dashboard_js
     assert 'crossorigin=""\n    defer' in response.text
+    assert "/static/dashboard.js?v=0.1.0" in response.text

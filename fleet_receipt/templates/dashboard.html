@@ -171,6 +171,6 @@
     crossorigin=""
     defer
   ></script>
-  <script src="{{ url_for('static', path='/dashboard.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/dashboard.js') }}?v={{ version }}" defer></script>
 </body>
 </html>
