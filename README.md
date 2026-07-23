@@ -15,6 +15,7 @@ The fleet is configuration, not application code. All 16 vessels and their IMO/M
 - Configurable word-safe receipt wrapping
 - Persistent SQLite position cache with stale and unavailable-position output
 - Live AISstream.io position collection filtered to configured fleet MMSIs
+- Local receipt-style web view with health and plain-text endpoints
 - Text-only preview that cannot consume paper
 
 CUPS/ESC-POS printing, systemd, and GPIO are later deployment phases.
@@ -120,6 +121,44 @@ Ships never observed by the listener are consolidated under `NO RECENT AIS`;
 listener health determines whether that section describes a feed error or the
 normal limits of terrestrial AIS coverage.
 
+## Local web interface
+
+Run the web interface from the activated project environment:
+
+```bash
+fleet-receipt web
+```
+
+It listens on `0.0.0.0:8000` by default. From a laptop or phone on the same
+network, open either:
+
+```text
+http://raspberrypi.local:8000/
+http://YOUR_PI_IP_ADDRESS:8000/
+```
+
+The page uses the same renderer and persistent SQLite cache as
+`fleet-receipt preview --cached`, so cached positions appear immediately even
+when the listener is restarting or AISstream.io is temporarily disconnected.
+It preserves the narrow receipt layout and automatically refreshes every 30
+seconds.
+
+Available routes:
+
+- `/` — receipt-style fleet report
+- `/api/report` — the same rendered report as UTF-8 plain text
+- `/health` — cache availability, vessel count, and newest AIS update age
+
+Optional bind overrides are available for local troubleshooting:
+
+```bash
+fleet-receipt web --host 127.0.0.1 --port 8080
+```
+
+The server does not display API keys, environment variables, or cache paths.
+It has no login or TLS, so keep it on a trusted local network and do not expose
+port 8000 directly to the public internet.
+
 ## Create the Python environment
 
 On Raspberry Pi OS or Debian:
@@ -133,9 +172,8 @@ python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 ```
 
-On macOS, use the same commands without `apt` after installing Python 3.11 or newer.
-
-The code remains compatible with Python 3.9 for the inspected development host, but Python 3.11 or newer is recommended for the Raspberry Pi deployment.
+On macOS, use the same commands without `apt` after installing Python 3.10 or
+newer. Python 3.11 or newer is recommended for the Raspberry Pi deployment.
 
 ## Preview using fixtures
 

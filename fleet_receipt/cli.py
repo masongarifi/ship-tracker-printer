@@ -11,6 +11,7 @@ from .printers.file import FilePrinter
 from .printers.text import TextPrinter
 from .providers.aisstream import AISStreamError, AISStreamProvider
 from .providers.fixtures import FixturePositionProvider
+from .reporting import render_cached_report
 from .unlocode import (
     UNLocodeSyncError,
     database_status,
@@ -54,12 +55,22 @@ def build_parser() -> argparse.ArgumentParser:
     unlocode_commands = unlocode.add_subparsers(dest="unlocode_command", required=True)
     unlocode_commands.add_parser("sync", help="Download and index the official release")
     unlocode_commands.add_parser("status", help="Show local index status")
+    web = subparsers.add_parser("web", help="Serve the cached fleet report over HTTP")
+    web.add_argument("--host", default="0.0.0.0", help="Listen address (default: 0.0.0.0)")
+    web.add_argument("--port", type=int, default=8000, help="Listen port (default: 8000)")
     return parser
 
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.command == "web":
+            import uvicorn
+
+            from .web import create_app
+
+            uvicorn.run(create_app(), host=args.host, port=args.port)
+            return 0
         if args.command == "unlocode":
             if args.unlocode_command == "sync":
                 count = sync_unlocode()
@@ -93,13 +104,17 @@ def main(argv=None) -> int:
             )
             return 0
         if args.command == "preview":
-            fleet = load_fleet()
-            settings = load_settings()
+            generated_at = _datetime(args.at) if args.at else datetime.now(timezone.utc)
             if args.cached:
                 cache = PositionCache()
-                positions = cache.load()
-                feed_health = cache.health()
+                receipt = render_cached_report(
+                    cache,
+                    generated_at=generated_at,
+                    width=args.width,
+                )
             else:
+                fleet = load_fleet()
+                settings = load_settings()
                 provider = (
                     AISStreamProvider(timeout_seconds=args.wait)
                     if args.live
@@ -110,15 +125,14 @@ def main(argv=None) -> int:
                     "source": "Terrestrial" if args.live else "Fixture",
                     "status": "connected",
                 }
-            generated_at = _datetime(args.at) if args.at else datetime.now(timezone.utc)
-            receipt = format_receipt(
-                fleet,
-                positions,
-                generated_at,
-                width=args.width or int(settings["receipt_width"]),
-                stale_after_hours=float(settings["stale_after_hours"]),
-                feed_health=feed_health,
-            )
+                receipt = format_receipt(
+                    fleet,
+                    positions,
+                    generated_at,
+                    width=args.width or int(settings["receipt_width"]),
+                    stale_after_hours=float(settings["stale_after_hours"]),
+                    feed_health=feed_health,
+                )
             printer = FilePrinter(args.output) if args.output else TextPrinter()
             printer.print_receipt(receipt)
             if args.output:
