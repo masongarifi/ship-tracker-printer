@@ -44,7 +44,8 @@ def format_receipt(
 
         _append_wrapped(lines, vessel.movement, width)
         if vessel.voyage:
-            _append_wrapped(lines, vessel.voyage, width)
+            for voyage_line in vessel.voyage.splitlines():
+                _append_wrapped(lines, voyage_line, width)
         lines.extend([f"UTC {vessel.utc_time}", f"Local {vessel.local_time}"])
         lines.append(f"{vessel.age_heading} {vessel.age}")
 

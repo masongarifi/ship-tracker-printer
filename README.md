@@ -81,6 +81,13 @@ The subscription sends only the configured MMSIs and requests `PositionReport`
 plus `ShipStaticData` messages. Static reports supply destination and ETA when
 the vessel broadcasts them.
 
+AIS destination strings are normalized before printing. Common UN/LOCODEs are
+expanded into readable ports, routes such as `GB SOU > NL RTM` become
+`Southampton, United Kingdom → Rotterdam, Netherlands`, and ETA is explicitly
+labelled UTC. Add future mappings to `UNLOCODE_PORTS` in
+`fleet_receipt/formatting_helpers.py`; unknown endpoints remain visible in a
+cleaned, title-cased form rather than being discarded.
+
 The receipt begins with per-line reporting counts and identifies the AIS source.
 Ships with cached but old positions remain in the report under `Last AIS report`.
 Ships never observed by the listener are consolidated under `NO RECENT AIS`;

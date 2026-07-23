@@ -1,17 +1,21 @@
 from datetime import datetime, timezone
+import re
 from typing import Optional, Tuple
 
-DESTINATION_NAMES = {
-    "GB DVR": "Dover",
-    "GBDVR": "Dover",
-    "NL RTM": "Rotterdam",
-    "NLRTM": "Rotterdam",
-    "US SEA": "Seattle",
-    "USSEA": "Seattle",
-    "CA VAN": "Vancouver",
-    "CAVAN": "Vancouver",
-    "IS REY": "Reykjavik",
-    "ISREY": "Reykjavik",
+# Add new UN/LOCODE entries here. Keys are canonical two-letter country code
+# plus three-letter location code; input with or without spaces is accepted.
+UNLOCODE_PORTS = {
+    "GB DVR": "Dover, United Kingdom",
+    "GB SOU": "Southampton, United Kingdom",
+    "NL RTM": "Rotterdam, Netherlands",
+    "BE ANR": "Antwerp, Belgium",
+    "DE HAM": "Hamburg, Germany",
+    "FR LEH": "Le Havre, France",
+    "US SEA": "Seattle, Washington",
+    "US LAX": "Los Angeles, California",
+    "CA VAN": "Vancouver, British Columbia",
+    "SG SIN": "Singapore",
+    "IS REY": "Reykjavik, Iceland",
 }
 
 
@@ -42,21 +46,24 @@ def format_eta(value: Optional[str]) -> Optional[str]:
         return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return f"ETA {parsed.day:02d} {parsed:%b} {parsed:%H%M}"
+        return f"ETA {parsed.day:02d} {parsed:%b} {parsed:%H%M} UTC"
     except ValueError:
-        return f"ETA {value.strip()}" if value.strip() else None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        return f"ETA {cleaned}" + ("" if cleaned.upper().endswith("UTC") else " UTC")
 
 
 def format_destination(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
-    cleaned = " ".join(value.strip(" @").upper().split())
+    cleaned = " ".join(value.strip(" @").split())
     if not cleaned:
         return None
-    friendly = DESTINATION_NAMES.get(cleaned)
-    if friendly:
-        return friendly
-    return cleaned.title()
+    endpoints = re.split(r"\s*(?:->|>|→)\s*", cleaned, maxsplit=1)
+    if len(endpoints) == 2 and all(endpoints):
+        return f"{_friendly_endpoint(endpoints[0])} → {_friendly_endpoint(endpoints[1])}"
+    return _friendly_endpoint(cleaned)
 
 
 def format_movement(
@@ -75,7 +82,15 @@ def format_voyage(destination: Optional[str], eta: Optional[str]) -> Optional[st
     friendly = format_destination(destination)
     if not friendly:
         return None
-    return f"Destination {friendly}" + (f" {eta}" if eta else "")
+    destination_line = friendly if " → " in friendly else f"Destination {friendly}"
+    return destination_line + (f"\n{eta}" if eta else "")
+
+
+def _friendly_endpoint(value: str) -> str:
+    cleaned = " ".join(value.strip(" @").split())
+    compact = re.sub(r"[\s-]+", "", cleaned).upper()
+    canonical = f"{compact[:2]} {compact[2:]}" if len(compact) == 5 else ""
+    return UNLOCODE_PORTS.get(canonical, cleaned.title())
 
 
 def format_position_age(

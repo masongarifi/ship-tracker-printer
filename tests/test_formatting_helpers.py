@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from fleet_receipt.formatting_helpers import (
     format_course,
     format_destination,
@@ -19,7 +21,7 @@ def test_course_is_zero_padded_and_invalid_values_are_omitted():
 
 
 def test_eta_uses_bridge_watch_format():
-    assert format_eta("2026-07-26T07:00:00+00:00") == "ETA 26 Jul 0700"
+    assert format_eta("2026-07-26T07:00:00+00:00") == "ETA 26 Jul 0700 UTC"
     assert format_eta(None) is None
 
 
@@ -47,10 +49,41 @@ def test_missing_or_invalid_navigation_values_are_hidden():
 
 
 def test_destination_codes_become_friendly_compact_voyage_lines():
-    assert format_destination("GB DVR") == "Dover"
-    assert format_voyage("GB DVR", "ETA 26 Jul 0700") == (
-        "Destination Dover ETA 26 Jul 0700"
+    assert format_destination("GB DVR") == "Dover, United Kingdom"
+    assert format_voyage("GB DVR", "ETA 26 Jul 0700 UTC") == (
+        "Destination Dover, United Kingdom\nETA 26 Jul 0700 UTC"
     )
+
+
+@pytest.mark.parametrize(
+    "code, expected",
+    [
+        ("GB SOU", "Southampton, United Kingdom"),
+        ("NLRTM", "Rotterdam, Netherlands"),
+        ("BE ANR", "Antwerp, Belgium"),
+        ("DE HAM", "Hamburg, Germany"),
+        ("FR LEH", "Le Havre, France"),
+        ("US SEA", "Seattle, Washington"),
+        ("USLAX", "Los Angeles, California"),
+        ("CA VAN", "Vancouver, British Columbia"),
+        ("SG SIN", "Singapore"),
+    ],
+)
+def test_common_unlocodes_expand_to_friendly_ports(code, expected):
+    assert format_destination(code) == expected
+
+
+def test_route_translates_known_endpoint_and_preserves_unknown_endpoint():
+    assert format_destination("TE COB > GB DVR") == (
+        "Te Cob → Dover, United Kingdom"
+    )
+    assert format_destination("GB SOU > NL RTM") == (
+        "Southampton, United Kingdom → Rotterdam, Netherlands"
+    )
+
+
+def test_unknown_destination_falls_back_gracefully():
+    assert format_destination("SOME TERMINAL") == "Some Terminal"
 
 
 def test_compact_movement_line_omits_invalid_values():

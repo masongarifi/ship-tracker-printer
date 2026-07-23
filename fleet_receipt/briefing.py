@@ -4,7 +4,6 @@ from typing import Dict, List, Mapping, Optional, Tuple
 
 from .ais_status import navigational_status
 from .formatting_helpers import (
-    format_destination,
     format_eta,
     format_movement,
     format_position_age,
@@ -107,11 +106,7 @@ def build_vessel_brief(
     if status.casefold() == "under way":
         status = "Underway"
     is_underway = status.casefold().replace(" ", "").startswith("underway")
-    destination = (
-        format_destination(position.destination)
-        if is_underway and position.destination
-        else None
-    )
+    destination = position.destination if is_underway and position.destination else None
     eta = format_eta(position.reported_eta) if destination else None
     return VesselBrief(
         name=vessel.name.upper(),

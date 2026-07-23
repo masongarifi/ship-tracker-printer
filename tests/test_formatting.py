@@ -88,6 +88,22 @@ def test_vessel_block_has_no_internal_blank_lines(fleet, positions, report_time)
     assert "\n\n" not in block.strip()
 
 
+def test_route_and_eta_are_friendly_on_receipt(fleet, positions, report_time):
+    changed = dict(positions)
+    changed["koningsdam"] = replace(
+        changed["koningsdam"],
+        destination="TE COB > GB DVR",
+        reported_eta="2026-07-24T02:30:00+00:00",
+    )
+
+    receipt = format_receipt(fleet, changed, report_time)
+    block = receipt.split("KONINGSDAM", 1)[1].split("NIEUW AMSTERDAM", 1)[0]
+
+    assert "Te Cob → Dover, United Kingdom" in block
+    assert "ETA 24 Jul 0230 UTC" in block
+    assert "GB DVR" not in block
+
+
 def test_coordinates_appear_exactly_once_per_position(fleet, positions, report_time):
     from fleet_receipt.locations import format_coordinates
 
