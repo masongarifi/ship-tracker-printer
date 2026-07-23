@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import math
 
 from fleet_receipt.config import load_fleet
 from fleet_receipt.dashboard import build_dashboard, search_vessels, vessel_slug
@@ -81,3 +82,27 @@ def test_search_supports_name_imo_and_mmsi() -> None:
         "Koningsdam"
     ]
     assert vessel_slug("Adventure of the Seas") == "adventure-of-the-seas"
+
+
+def test_bad_map_position_does_not_block_valid_markers() -> None:
+    fleet = load_fleet(profile="all")
+    positions = {
+        "koningsdam": _position(
+            "Koningsdam",
+            latitude=52,
+            speed=15,
+            status="Under way",
+            minutes_old=1,
+        ),
+        "celebrity apex": _position(
+            "Celebrity Apex",
+            latitude=math.nan,
+            speed=12,
+            status="Under way",
+            minutes_old=2,
+        ),
+    }
+
+    dashboard = build_dashboard(fleet, positions, NOW)
+
+    assert [marker["name"] for marker in dashboard["markers"]] == ["Koningsdam"]

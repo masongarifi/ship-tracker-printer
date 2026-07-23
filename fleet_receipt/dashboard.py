@@ -73,6 +73,7 @@ def build_dashboard(
     markers = [
         _marker(vessel_by_name[key], position)
         for key, position in known_positions.items()
+        if _valid_map_position(position)
     ]
     newest = max(
         (position.position_timestamp for position in known_positions.values()),
@@ -246,6 +247,17 @@ def _course(position: Position) -> str:
     if not isinstance(value, (int, float)) or not 0 <= value < 360:
         return "Unavailable"
     return f"{round(value) % 360:03d}°"
+
+
+def _valid_map_position(position: Position) -> bool:
+    latitude = position.latitude
+    longitude = position.longitude
+    return (
+        isinstance(latitude, (int, float))
+        and isinstance(longitude, (int, float))
+        and -90 <= latitude <= 90
+        and -180 <= longitude <= 180
+    )
 
 
 def _age(value: Optional[datetime], generated_at: datetime) -> str:

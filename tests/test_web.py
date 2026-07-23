@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import json
+import re
 from fastapi.testclient import TestClient
 
 from fleet_receipt.cache import PositionCache
@@ -308,3 +310,37 @@ def test_static_dashboard_assets_are_served(tmp_path) -> None:
     assert javascript.status_code == 200
     assert "setInterval" not in javascript.text
     assert "fetch(" not in javascript.text
+    assert 'document.addEventListener("DOMContentLoaded"' in javascript.text
+    assert "mapElement.replaceChildren()" in javascript.text
+    assert "map.invalidateSize" in javascript.text
+    assert "ships.forEach" in javascript.text
+    assert "try {" in javascript.text
+    assert "map.setView([20, 0], 2)" in javascript.text
+
+
+def test_embedded_ship_map_data_is_valid_json(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam"))
+    response = _client(cache).get("/")
+    match = re.search(
+        r'<script id="fleet-map-data" type="application/json">(.*?)</script>',
+        response.text,
+        re.DOTALL,
+    )
+
+    assert match is not None
+    ships = json.loads(match.group(1))
+    assert isinstance(ships, list)
+    assert ships[0]["name"] == "Koningsdam"
+    assert ships[0]["latitude"] == 52.0
+
+
+def test_leaflet_assets_load_before_dashboard_initialization(tmp_path) -> None:
+    response = _client(PositionCache(tmp_path / "positions.sqlite3")).get("/")
+
+    leaflet_css = response.text.index("leaflet@1.9.4/dist/leaflet.css")
+    leaflet_js = response.text.index("leaflet@1.9.4/dist/leaflet.js")
+    dashboard_js = response.text.index("/static/dashboard.js")
+
+    assert leaflet_css < leaflet_js < dashboard_js
+    assert 'crossorigin=""\n    defer' in response.text
