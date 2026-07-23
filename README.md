@@ -81,12 +81,38 @@ The subscription sends only the configured MMSIs and requests `PositionReport`
 plus `ShipStaticData` messages. Static reports supply destination and ETA when
 the vessel broadcasts them.
 
-AIS destination strings are normalized before printing. Common UN/LOCODEs are
-expanded into readable ports, routes such as `GB SOU > NL RTM` become
+AIS destination strings are normalized before printing using the complete
+official UNECE UN/LOCODE release. Routes such as `GB SOU > NL RTM` become
 `Southampton, United Kingdom → Rotterdam, Netherlands`, and ETA is explicitly
-labelled UTC. Add future mappings to `UNLOCODE_PORTS` in
-`fleet_receipt/formatting_helpers.py`; unknown endpoints remain visible in a
-cleaned, title-cased form rather than being discarded.
+labelled UTC. Unknown endpoints remain visible in a cleaned, title-cased form
+rather than being discarded.
+
+## Complete UN/LOCODE database
+
+The listener automatically downloads and indexes the official UNECE 2025-1
+release the first time it starts. The release contains more than 100,000
+locations. The resulting offline index is stored outside Git at:
+
+```text
+~/.local/share/ship-tracker-printer/unlocode.sqlite3
+```
+
+This keeps receipt lookup fast and available without network access. It also
+avoids redistributing UNECE data through this repository. To manage it manually:
+
+```bash
+fleet-receipt unlocode status
+fleet-receipt unlocode sync
+```
+
+The small `UNLOCODE_PORTS` dictionary in `formatting_helpers.py` is only an
+emergency fallback for a few common codes when the official index has not yet
+been downloaded. The primary lookup uses the full local database.
+
+Official source and usage terms:
+
+- <https://unlocode.unece.org/publications/>
+- <https://unlocode.unece.org/terms/>
 
 The receipt begins with per-line reporting counts and identifies the AIS source.
 Ships with cached but old positions remain in the report under `Last AIS report`.

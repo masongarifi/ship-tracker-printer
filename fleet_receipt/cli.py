@@ -11,6 +11,12 @@ from .printers.file import FilePrinter
 from .printers.text import TextPrinter
 from .providers.aisstream import AISStreamError, AISStreamProvider
 from .providers.fixtures import FixturePositionProvider
+from .unlocode import (
+    UNLocodeSyncError,
+    database_status,
+    sync_unlocode,
+    unlocode_available,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,15 +48,42 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Override the OS application-data SQLite cache path",
     )
+    unlocode = subparsers.add_parser(
+        "unlocode", help="Manage the complete offline UNECE UN/LOCODE index"
+    )
+    unlocode_commands = unlocode.add_subparsers(dest="unlocode_command", required=True)
+    unlocode_commands.add_parser("sync", help="Download and index the official release")
+    unlocode_commands.add_parser("status", help="Show local index status")
     return parser
 
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.command == "unlocode":
+            if args.unlocode_command == "sync":
+                count = sync_unlocode()
+                print(f"UN/LOCODE {count} locations indexed")
+                return 0
+            status = database_status()
+            print(f"Path: {status['path']}")
+            print(f"Available: {'yes' if status['available'] else 'no'}")
+            if status["available"]:
+                print(f"Release: {status['release']}")
+                print(f"Locations: {status['location_count']}")
+            return 0
         if args.command == "listen":
             fleet = load_fleet()
             cache = PositionCache(args.cache) if args.cache else PositionCache()
+            if not unlocode_available():
+                try:
+                    count = sync_unlocode()
+                    print(f"UN/LOCODE index ready: {count} locations")
+                except UNLocodeSyncError as exc:
+                    print(
+                        f"UN/LOCODE sync unavailable; using built-in aliases: {exc}",
+                        file=sys.stderr,
+                    )
             print(f"Listening for {len(fleet.vessels)} vessels; cache: {cache.path}")
             AISStreamProvider().listen_forever(
                 fleet.vessels,

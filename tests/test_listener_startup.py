@@ -38,6 +38,7 @@ def test_listener_receives_persistent_positions_immediately_at_startup(
             raise KeyboardInterrupt
 
     monkeypatch.setattr(cli, "AISStreamProvider", FakeProvider)
+    monkeypatch.setattr(cli, "unlocode_available", lambda: True)
 
     assert cli.main(["listen"]) == 130
     assert received["eurodam"].latitude == 47.6

@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 import re
 from typing import Optional, Tuple
 
+from .unlocode import lookup_unlocode
+
 # Add new UN/LOCODE entries here. Keys are canonical two-letter country code
 # plus three-letter location code; input with or without spaces is accepted.
 UNLOCODE_PORTS = {
@@ -90,7 +92,11 @@ def _friendly_endpoint(value: str) -> str:
     cleaned = " ".join(value.strip(" @").split())
     compact = re.sub(r"[\s-]+", "", cleaned).upper()
     canonical = f"{compact[:2]} {compact[2:]}" if len(compact) == 5 else ""
-    return UNLOCODE_PORTS.get(canonical, cleaned.title())
+    return (
+        lookup_unlocode(canonical)
+        or UNLOCODE_PORTS.get(canonical)
+        or cleaned.title()
+    )
 
 
 def format_position_age(
