@@ -31,7 +31,7 @@ def format_receipt(
     briefing = build_fleet_briefing(
         fleet, positions, generated_at, stale_after_hours, feed_health
     )
-    lines: List[str] = ["FLEET OPERATIONS BRIEF", _report_timestamp(generated_at), ""]
+    lines: List[str] = ["FLEET OPERATIONS BRIEF", _report_timestamp(generated_at)]
     lines.extend(briefing.summary)
     lines.extend([f"AIS Source: {briefing.source}", "═" * width])
 
@@ -42,18 +42,11 @@ def format_receipt(
             _append_wrapped(lines, vessel.landmark, width)
         _append_coordinate(lines, vessel.coordinates, width)
 
-        lines.extend(["", vessel.status])
-        if vessel.speed:
-            lines.append(vessel.speed)
-        if vessel.course:
-            lines.extend(["", vessel.course])
-        if vessel.destination:
-            lines.extend(["", "Destination", vessel.destination])
-            if vessel.eta:
-                lines.append(vessel.eta)
-
-        lines.extend(["", f"UTC {vessel.utc_time}", f"Local {vessel.local_time}"])
-        lines.extend(["", vessel.age_heading, vessel.age])
+        _append_wrapped(lines, vessel.movement, width)
+        if vessel.voyage:
+            _append_wrapped(lines, vessel.voyage, width)
+        lines.extend([f"UTC {vessel.utc_time}", f"Local {vessel.local_time}"])
+        lines.append(f"{vessel.age_heading} {vessel.age}")
 
     if briefing.missing_names:
         lines.extend(
@@ -61,14 +54,12 @@ def format_receipt(
                 "",
                 "─" * min(16, width),
                 f"NO RECENT AIS ({len(briefing.missing_names)})",
-                "",
             ]
         )
         lines.extend(briefing.missing_names)
-        lines.append("")
         _append_wrapped(lines, briefing.missing_reason, width)
 
-    lines.extend(["", "Latest available AIS positions", "Times are estimated"])
+    lines.extend(["Latest available AIS positions", "Times are estimated"])
     return "\n".join(_wrap_existing(lines, width)).rstrip() + "\n"
 
 

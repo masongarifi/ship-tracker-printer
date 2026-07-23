@@ -10,17 +10,16 @@ def test_every_vessel_appears_exactly_once(fleet, positions, report_time):
         assert receipt.count(heading) == 1
 
 
-def test_status_and_speed_are_cleanly_separated(fleet, positions, report_time):
+def test_underway_movement_is_one_compact_line(fleet, positions, report_time):
     receipt = format_receipt(fleet, positions, report_time)
     koningsdam = receipt.split("KONINGSDAM", 1)[1].split("NIEUW AMSTERDAM", 1)[0]
-    assert "\nUNDERWAY\n14.2 kt\n" in koningsdam
+    assert "\nUNDERWAY CRS 320° at 14.2 kts\n" in koningsdam
     assert "Inside Passage" in koningsdam
-    assert "Course 320°" in koningsdam
 
 
 def test_stale_warning(fleet, positions, report_time):
     receipt = format_receipt(fleet, positions, report_time)
-    assert "Last AIS report\n11 hours ago" in receipt
+    assert "Last AIS report 11 hours ago" in receipt
 
 
 def test_missing_position_output(fleet, positions, report_time):
@@ -56,7 +55,7 @@ def test_destination_and_eta_only_print_when_underway(fleet, positions, report_t
 
     assert "Destination" not in eurodam
     assert "ETA" not in eurodam
-    assert "Destination\nKETCHIKAN" in koningsdam
+    assert "Destination Ketchikan" in koningsdam
 
 
 def test_moored_and_anchored_blocks_hide_speed_and_course(
@@ -81,6 +80,12 @@ def test_moored_and_anchored_blocks_hide_speed_and_course(
     assert "\nAT ANCHOR\n" in rotterdam
     assert "kt" not in rotterdam
     assert "Course" not in rotterdam
+
+
+def test_vessel_block_has_no_internal_blank_lines(fleet, positions, report_time):
+    receipt = format_receipt(fleet, positions, report_time)
+    block = receipt.split("KONINGSDAM", 1)[1].split("NIEUW AMSTERDAM", 1)[0]
+    assert "\n\n" not in block.strip()
 
 
 def test_coordinates_appear_exactly_once_per_position(fleet, positions, report_time):

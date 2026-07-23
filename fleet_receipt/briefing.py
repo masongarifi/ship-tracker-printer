@@ -4,12 +4,12 @@ from typing import Dict, List, Mapping, Optional, Tuple
 
 from .ais_status import navigational_status
 from .formatting_helpers import (
-    format_course,
+    format_destination,
     format_eta,
+    format_movement,
     format_position_age,
     format_seattle_offset,
-    should_show_course,
-    should_show_speed,
+    format_voyage,
 )
 from .locations import (
     format_coordinates,
@@ -27,11 +27,8 @@ class VesselBrief:
     location: str
     landmark: Optional[str]
     coordinates: str
-    status: str
-    speed: Optional[str]
-    course: Optional[str]
-    destination: Optional[str]
-    eta: Optional[str]
+    movement: str
+    voyage: Optional[str]
     utc_time: str
     local_time: str
     age_heading: str
@@ -111,30 +108,20 @@ def build_vessel_brief(
         status = "Underway"
     is_underway = status.casefold().replace(" ", "").startswith("underway")
     destination = (
-        position.destination.strip().upper()
+        format_destination(position.destination)
         if is_underway and position.destination
         else None
     )
+    eta = format_eta(position.reported_eta) if destination else None
     return VesselBrief(
         name=vessel.name.upper(),
         location=location,
         landmark=landmark,
         coordinates=format_coordinates(position.latitude, position.longitude),
-        status=status.upper(),
-        speed=(
-            f"{position.speed_knots:.1f} kt"
-            if should_show_speed(status, position.speed_knots)
-            else None
+        movement=format_movement(
+            status, position.speed_knots, position.course_degrees
         ),
-        course=(
-            format_course(position.course_degrees)
-            if should_show_course(
-                status, position.speed_knots, position.course_degrees
-            )
-            else None
-        ),
-        destination=destination,
-        eta=format_eta(position.reported_eta) if destination else None,
+        voyage=format_voyage(destination, eta),
         utc_time=position.position_timestamp.astimezone(timezone.utc).strftime("%H:%M"),
         local_time=(
             f"{estimate.local_time:%H:%M} "

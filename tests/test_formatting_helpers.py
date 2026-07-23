@@ -2,8 +2,11 @@ from datetime import datetime, timezone
 
 from fleet_receipt.formatting_helpers import (
     format_course,
+    format_destination,
     format_eta,
+    format_movement,
     format_position_age,
+    format_voyage,
     should_show_course,
     should_show_speed,
 )
@@ -41,3 +44,18 @@ def test_missing_or_invalid_navigation_values_are_hidden():
     assert not should_show_speed("Underway", None)
     assert not should_show_course("Underway", 12.0, None)
     assert not should_show_course("Underway", 12.0, 360.0)
+
+
+def test_destination_codes_become_friendly_compact_voyage_lines():
+    assert format_destination("GB DVR") == "Dover"
+    assert format_voyage("GB DVR", "ETA 26 Jul 0700") == (
+        "Destination Dover ETA 26 Jul 0700"
+    )
+
+
+def test_compact_movement_line_omits_invalid_values():
+    assert format_movement("Underway", 18.3, 75.0) == (
+        "UNDERWAY CRS 075° at 18.3 kts"
+    )
+    assert format_movement("Moored", 0.0, 195.0) == "MOORED"
+    assert format_movement("Underway", 12.0, None) == "UNDERWAY at 12.0 kts"

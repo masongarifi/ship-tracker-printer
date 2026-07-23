@@ -1,6 +1,19 @@
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
+DESTINATION_NAMES = {
+    "GB DVR": "Dover",
+    "GBDVR": "Dover",
+    "NL RTM": "Rotterdam",
+    "NLRTM": "Rotterdam",
+    "US SEA": "Seattle",
+    "USSEA": "Seattle",
+    "CA VAN": "Vancouver",
+    "CAVAN": "Vancouver",
+    "IS REY": "Reykjavik",
+    "ISREY": "Reykjavik",
+}
+
 
 def should_show_speed(status: str, speed: Optional[float]) -> bool:
     return not _stationary_status(status) and _valid_number(speed) and speed >= 0
@@ -32,6 +45,37 @@ def format_eta(value: Optional[str]) -> Optional[str]:
         return f"ETA {parsed.day:02d} {parsed:%b} {parsed:%H%M}"
     except ValueError:
         return f"ETA {value.strip()}" if value.strip() else None
+
+
+def format_destination(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    cleaned = " ".join(value.strip(" @").upper().split())
+    if not cleaned:
+        return None
+    friendly = DESTINATION_NAMES.get(cleaned)
+    if friendly:
+        return friendly
+    return cleaned.title()
+
+
+def format_movement(
+    status: str, speed: Optional[float], course: Optional[float]
+) -> str:
+    normalized = " ".join(status.strip().upper().split())
+    parts = [normalized]
+    if should_show_course(status, speed, course):
+        parts.append(f"CRS {round(course) % 360:03d}°")
+    if should_show_speed(status, speed):
+        parts.append(f"at {speed:.1f} kts")
+    return " ".join(parts)
+
+
+def format_voyage(destination: Optional[str], eta: Optional[str]) -> Optional[str]:
+    friendly = format_destination(destination)
+    if not friendly:
+        return None
+    return f"Destination {friendly}" + (f" {eta}" if eta else "")
 
 
 def format_position_age(
