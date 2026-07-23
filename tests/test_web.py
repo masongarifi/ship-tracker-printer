@@ -140,3 +140,44 @@ def test_vessel_data_is_html_escaped(tmp_path) -> None:
     assert "&lt;/script&gt;" in response.text.casefold()
     assert "AISSTREAM_API_KEY" not in response.text
     assert str(cache.path) not in response.text
+
+
+def test_celebrity_routes_render_only_celebrity_report(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Celebrity Apex"))
+    cache.update(_position(vessel_name="Eurodam"))
+    client = _client(cache)
+
+    for route in ("/celebrity", "/profile/celebrity"):
+        response = client.get(route)
+        assert response.status_code == 200
+        assert "Celebrity Cruises" in response.text
+        assert "CELEBRITY APEX" in response.text
+        assert "EURODAM" not in response.text
+        assert '<meta http-equiv="refresh" content="30">' in response.text
+
+
+def test_main_page_links_to_celebrity_without_changing_default_report(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Celebrity Apex"))
+
+    response = _client(cache).get("/")
+
+    assert response.status_code == 200
+    assert '<a href="/celebrity">Celebrity</a>' in response.text
+    assert "Celebrity Reporting:" not in response.text
+    assert "CELEBRITY APEX" not in response.text
+
+
+def test_all_page_groups_main_and_celebrity_fleets(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam"))
+    cache.update(_position(vessel_name="Celebrity Apex"))
+
+    response = _client(cache).get("/all")
+
+    assert response.status_code == 200
+    assert "HAL Reporting: 1 / 11" in response.text
+    assert "Seabourn Reporting: 0 / 5" in response.text
+    assert "Celebrity Reporting: 1 / 15" in response.text
+    assert response.text.index("KONINGSDAM") < response.text.index("CELEBRITY APEX")

@@ -25,6 +25,7 @@ def format_receipt(
     width: int = 42,
     stale_after_hours: float = 6,
     feed_health: Optional[Mapping[str, object]] = None,
+    group_by_fleet: bool = False,
 ) -> str:
     if generated_at.tzinfo is None:
         raise ValueError("Report time must be timezone-aware")
@@ -35,7 +36,17 @@ def format_receipt(
     lines.extend(briefing.summary)
     lines.extend([f"AIS Source: {briefing.source}", "═" * width])
 
+    line_by_vessel = {
+        vessel.name.upper(): vessel.cruise_line
+        for vessel in fleet.vessels
+        if vessel.active
+    }
+    current_line = None
     for vessel in briefing.vessels:
+        vessel_line = line_by_vessel.get(vessel.name)
+        if group_by_fleet and vessel_line != current_line:
+            _append_fleet_heading(lines, vessel_line or "Other", width)
+            current_line = vessel_line
         lines.extend(["", vessel.name, "─" * min(len(vessel.name), width)])
         _append_wrapped(lines, vessel.location, width)
         if vessel.landmark:
@@ -57,7 +68,17 @@ def format_receipt(
                 f"NO RECENT AIS ({len(briefing.missing_names)})",
             ]
         )
-        lines.extend(briefing.missing_names)
+        if group_by_fleet:
+            for line_name in fleet.cruise_line_order:
+                line_missing = [
+                    name
+                    for name in briefing.missing_names
+                    if line_by_vessel.get(name) == line_name
+                ]
+                if line_missing:
+                    lines.extend([line_name.upper(), *line_missing])
+        else:
+            lines.extend(briefing.missing_names)
         _append_wrapped(lines, briefing.missing_reason, width)
 
     lines.extend(["Latest available AIS positions", "Times are estimated"])
@@ -92,6 +113,10 @@ def _append_wrapped(lines: List[str], value: str, width: int) -> None:
         )
         or [""]
     )
+
+
+def _append_fleet_heading(lines: List[str], name: str, width: int) -> None:
+    lines.extend(["", name.upper(), "=" * min(len(name), width)])
 
 
 def _wrap_existing(lines: Iterable[str], width: int) -> Iterable[str]:

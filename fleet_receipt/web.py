@@ -2,10 +2,11 @@ import html
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from .cache import PositionCache
+from .config import ConfigurationError
 from .reporting import render_cached_report
 
 REFRESH_SECONDS = 30
@@ -24,19 +25,34 @@ def create_app(
         openapi_url=None,
     )
 
-    @app.get("/", response_class=HTMLResponse)
-    def receipt_page():
+    def profile_page(fleet_profile: str, heading: str):
         refreshed_at = _aware_utc(clock())
-        report = render_cached_report(active_cache, generated_at=refreshed_at)
+        report = _render_profile(active_cache, refreshed_at, fleet_profile)
         return HTMLResponse(
-            _receipt_html(report, refreshed_at),
+            _receipt_html(report, refreshed_at, heading),
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/", response_class=HTMLResponse)
+    def receipt_page():
+        return profile_page("main", "HAL + Seabourn")
+
+    @app.get("/celebrity", response_class=HTMLResponse)
+    def celebrity_page():
+        return profile_page("celebrity", "Celebrity Cruises")
+
+    @app.get("/profile/celebrity", response_class=HTMLResponse)
+    def celebrity_profile_page():
+        return profile_page("celebrity", "Celebrity Cruises")
+
+    @app.get("/all", response_class=HTMLResponse)
+    def all_fleets_page():
+        return profile_page("all", "All Fleets")
+
     @app.get("/api/report", response_class=PlainTextResponse)
-    def report_text():
+    def report_text(fleet: str = "main"):
         return PlainTextResponse(
-            render_cached_report(active_cache, generated_at=_aware_utc(clock())),
+            _render_profile(active_cache, _aware_utc(clock()), fleet),
             media_type="text/plain",
             headers={"Cache-Control": "no-store"},
         )
@@ -66,9 +82,25 @@ def create_app(
     return app
 
 
-def _receipt_html(report: str, refreshed_at: datetime) -> str:
+def _render_profile(
+    cache: PositionCache,
+    generated_at: datetime,
+    fleet_profile: str,
+) -> str:
+    try:
+        return render_cached_report(
+            cache,
+            generated_at=generated_at,
+            fleet_profile=fleet_profile,
+        )
+    except ConfigurationError as exc:
+        raise HTTPException(status_code=404, detail="Unknown fleet profile") from exc
+
+
+def _receipt_html(report: str, refreshed_at: datetime, heading: str) -> str:
     safe_report = html.escape(report)
     refreshed = html.escape(refreshed_at.strftime("%Y-%m-%d %H:%M:%S UTC"))
+    safe_heading = html.escape(heading)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -105,6 +137,25 @@ def _receipt_html(report: str, refreshed_at: datetime) -> str:
       color: #605e56;
       font: 500 0.78rem/1.4 system-ui, sans-serif;
     }}
+    nav {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0 0 0.8rem;
+    }}
+    nav a {{
+      border: 1px solid #c7c1b3;
+      border-radius: 999px;
+      padding: 0.35rem 0.65rem;
+      background: #fffef9;
+      color: #292821;
+      font: 600 0.76rem/1 system-ui, sans-serif;
+      text-decoration: none;
+    }}
+    nav a:hover, nav a:focus-visible {{
+      border-color: #6f6a5f;
+      outline: none;
+    }}
     pre {{
       margin: 0;
       padding: clamp(0.85rem, 3vw, 1.4rem);
@@ -128,8 +179,13 @@ def _receipt_html(report: str, refreshed_at: datetime) -> str:
 </head>
 <body>
   <main>
-    <h1>Fleet Operations Brief</h1>
+    <h1>Fleet Operations Brief &mdash; {safe_heading}</h1>
     <p class="refreshed">Page refreshed: {refreshed} &middot; Auto-refreshes every 30 seconds</p>
+    <nav aria-label="Fleet reports">
+      <a href="/">HAL + Seabourn</a>
+      <a href="/celebrity">Celebrity</a>
+      <a href="/all">All Fleets</a>
+    </nav>
     <pre aria-label="Fleet operations receipt">{safe_report}</pre>
   </main>
 </body>

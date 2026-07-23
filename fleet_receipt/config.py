@@ -28,13 +28,24 @@ def _load_yaml_compatible(path: Path) -> Dict[str, Any]:
         return data
 
 
-def load_fleet(path: Path = PROJECT_ROOT / "config" / "fleet.yaml") -> FleetData:
+def load_fleet(
+    path: Path = PROJECT_ROOT / "config" / "fleet.yaml",
+    profile: str = "main",
+) -> FleetData:
     data = _load_yaml_compatible(path)
+    selected_profile = profile.strip().casefold()
+    if not selected_profile:
+        raise ConfigurationError("Fleet profile cannot be empty")
     order = []
     vessels = []
     seen = set()
+    configured_profiles = set()
     for line in data.get("cruise_lines", []):
         line_name = str(line["name"]).strip()
+        line_profile = str(line.get("profile") or "main").strip().casefold()
+        configured_profiles.add(line_profile)
+        if selected_profile != "all" and line_profile != selected_profile:
+            continue
         order.append(line_name)
         for item in line.get("vessels", []):
             name = str(item["name"]).strip()
@@ -52,6 +63,8 @@ def load_fleet(path: Path = PROJECT_ROOT / "config" / "fleet.yaml") -> FleetData
                     notes=item.get("notes"),
                 )
             )
+    if selected_profile != "all" and selected_profile not in configured_profiles:
+        raise ConfigurationError(f"Unknown fleet profile: {profile}")
     return FleetData(tuple(order), tuple(vessels))
 
 
@@ -63,4 +76,3 @@ def _identifier(value: Any):
 
 def load_settings(path: Path = PROJECT_ROOT / "config" / "settings.yaml") -> Dict[str, Any]:
     return _load_yaml_compatible(path)
-

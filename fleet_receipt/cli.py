@@ -37,6 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument("--at", help="Report instant as ISO 8601, for deterministic previews")
     preview.add_argument("--width", type=int, help="Override configured receipt width")
     preview.add_argument(
+        "--fleet",
+        default="main",
+        help="Fleet profile to display: main, celebrity, or all (default: main)",
+    )
+    preview.add_argument(
         "--output",
         type=Path,
         help="Write the exact receipt to a UTF-8 text file instead of the terminal",
@@ -84,7 +89,7 @@ def main(argv=None) -> int:
                 print(f"Locations: {status['location_count']}")
             return 0
         if args.command == "listen":
-            fleet = load_fleet()
+            fleet = load_fleet(profile="all")
             cache = PositionCache(args.cache) if args.cache else PositionCache()
             if not unlocode_available():
                 try:
@@ -111,9 +116,10 @@ def main(argv=None) -> int:
                     cache,
                     generated_at=generated_at,
                     width=args.width,
+                    fleet_profile=args.fleet,
                 )
             else:
-                fleet = load_fleet()
+                fleet = load_fleet(profile=args.fleet)
                 settings = load_settings()
                 provider = (
                     AISStreamProvider(timeout_seconds=args.wait)

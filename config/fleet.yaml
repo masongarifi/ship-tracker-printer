@@ -25,6 +25,27 @@
         {"name": "Seabourn Quest", "imo": "9483126", "mmsi": "311038900", "active": true, "notes": "IMO and MMSI supplied"},
         {"name": "Seabourn Venture", "imo": "9862023", "mmsi": "311000930", "active": true, "notes": "IMO and MMSI supplied"}
       ]
+    },
+    {
+      "name": "Celebrity Cruises",
+      "profile": "celebrity",
+      "vessels": [
+        {"name": "Celebrity Apex", "imo": "9838383", "mmsi": "215105000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Ascent", "imo": "9838400", "mmsi": "256191000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Beyond", "imo": "9838395", "mmsi": "215808000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Constellation", "imo": "9192399", "mmsi": "249046000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Eclipse", "imo": "9404314", "mmsi": "249666000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Edge", "imo": "9812705", "mmsi": "248325000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Equinox", "imo": "9372456", "mmsi": "249667000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Flora", "imo": "9837925", "mmsi": "735059945", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Infinity", "imo": "9189421", "mmsi": "249048000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Millennium", "imo": "9189419", "mmsi": "249055000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Reflection", "imo": "9506459", "mmsi": "229074000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Silhouette", "imo": "9451094", "mmsi": "248939000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Solstice", "imo": "9362530", "mmsi": "249409000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Summit", "imo": "9192387", "mmsi": "249047000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Celebrity Xcel", "imo": "9884136", "mmsi": "249457000", "active": true, "notes": "IMO and MMSI supplied"}
+      ]
     }
   ]
 }

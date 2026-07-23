@@ -141,6 +141,8 @@ def _sorted_vessels(fleet: FleetData, vessels: List[Vessel]) -> List[Vessel]:
 def _line_label(name: str) -> str:
     if name.casefold() == "holland america line":
         return "HAL"
+    if name.casefold() == "celebrity cruises":
+        return "Celebrity"
     return name
 
 

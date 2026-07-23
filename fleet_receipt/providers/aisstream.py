@@ -30,7 +30,7 @@ class AISStreamProvider(PositionProvider):
         self.timeout_seconds = timeout_seconds
 
     def fetch_positions(self, vessels: Sequence[Vessel]) -> Dict[str, Position]:
-        configured = [vessel for vessel in vessels if vessel.active and vessel.mmsi]
+        configured = list(_configured_by_mmsi(vessels).values())
         if not configured:
             raise AISStreamError("No active vessels have an MMSI configured")
         if len(configured) > 50:
@@ -49,7 +49,7 @@ class AISStreamProvider(PositionProvider):
         on_health: Optional[Callable[[str, Optional[str]], None]] = None,
         initial_positions: Optional[Dict[str, Position]] = None,
     ) -> None:
-        configured = [vessel for vessel in vessels if vessel.active and vessel.mmsi]
+        configured = list(_configured_by_mmsi(vessels).values())
         if not configured:
             raise AISStreamError("No active vessels have an MMSI configured")
         if len(configured) > 50:
@@ -159,8 +159,16 @@ def build_subscription(api_key: str, mmsis: Sequence[str]) -> Dict[str, Any]:
     return {
         "APIKey": api_key.strip(),
         "BoundingBoxes": WORLD_BOUNDING_BOX,
-        "FiltersShipMMSI": [str(mmsi) for mmsi in mmsis],
+        "FiltersShipMMSI": list(dict.fromkeys(str(mmsi) for mmsi in mmsis)),
         "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
+    }
+
+
+def _configured_by_mmsi(vessels: Sequence[Vessel]) -> Dict[str, Vessel]:
+    return {
+        str(vessel.mmsi): vessel
+        for vessel in vessels
+        if vessel.active and vessel.mmsi
     }
 
 
