@@ -2,6 +2,12 @@
 
 {% block title %}{{ page_title }} · Fleet Tracker{% endblock %}
 
+{% block extra_head %}
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
 {% block content %}
 <main class="content-page receipt-page">
   <section class="receipt-intro" aria-labelledby="receipt-heading">
@@ -14,8 +20,28 @@
       <a class="button button-secondary" href="{{ path }}">{{ label }}</a>
     {% endfor %}
   </nav>
+  <section class="panel map-panel fleet-report-map" aria-labelledby="fleet-map-heading">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Live positions</p>
+        <h2 id="fleet-map-heading">{{ heading }} map</h2>
+      </div>
+      <span class="section-note">OpenStreetMap · Cached AIS data</span>
+    </div>
+    <div id="fleet-map" role="application"
+         aria-label="Interactive map of cached {{ heading }} ships">
+      <p class="map-empty">Loading map…</p>
+    </div>
+    <noscript><p class="map-notice">JavaScript is required to display the map.</p></noscript>
+  </section>
   <section class="panel receipt-card">
     <pre aria-label="Fleet operations receipt">{{ report }}</pre>
   </section>
 </main>
+{% endblock %}
+
+{% block scripts %}
+  <script id="fleet-map-data" type="application/json">{{ fleet_dashboard.markers | tojson }}</script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', path='/dashboard.js') }}?v={{ asset_version }}" defer></script>
 {% endblock %}

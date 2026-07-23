@@ -278,6 +278,10 @@ h2 {
   margin-bottom: 2.5rem;
 }
 
+.fleet-report-map {
+  margin-top: 1.5rem;
+}
+
 .section-heading {
   min-height: 3.25rem;
   display: flex;

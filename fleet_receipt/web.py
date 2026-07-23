@@ -60,6 +60,11 @@ def create_app(
     def profile_page(request: Request, fleet_profile: str, heading: str):
         refreshed_at = _aware_utc(clock())
         report = _render_profile(active_cache, refreshed_at, fleet_profile)
+        fleet_dashboard = build_dashboard(
+            load_fleet(profile=fleet_profile),
+            active_cache.load(),
+            refreshed_at,
+        )
         navigation = (
             (
                 "HAL + Seabourn",
@@ -89,6 +94,7 @@ def create_app(
             name="fleet.html",
             context={
                 "report": report,
+                "fleet_dashboard": fleet_dashboard,
                 "refreshed_at": refreshed_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "heading": heading,
                 "navigation": navigation,

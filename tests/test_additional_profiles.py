@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import html
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -75,6 +76,9 @@ def test_each_additional_fleet_route_returns_200(profile, tmp_path):
         response = client.get(path)
         assert response.status_code == 200
         assert html.escape(line_name) in response.text
+        assert 'id="fleet-map"' in response.text
+        assert "leaflet@1.9.4/dist/leaflet.css" in response.text
+        assert "/static/dashboard.js" in response.text
 
 
 def test_homepage_cards_link_to_each_additional_fleet(tmp_path):
@@ -145,6 +149,36 @@ def test_map_data_exposes_each_additional_fleet_identifier(profile):
 
     marker = next(item for item in dashboard["markers"] if item["name"] == vessel.name)
     assert marker["fleet"] == vessel.cruise_line
+
+
+def test_fleet_page_map_contains_only_selected_profile(tmp_path):
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    for vessel_name in ("Norwegian Aqua", "Carnival Vista"):
+        cache.update(
+            Position(
+                vessel_name=vessel_name,
+                latitude=50,
+                longitude=-2,
+                speed_knots=12,
+                course_degrees=90,
+                navigational_status="Under way",
+                destination=None,
+                reported_eta=None,
+                position_timestamp=NOW,
+                source="test",
+            )
+        )
+
+    response = TestClient(create_app(cache=cache, now_factory=lambda: NOW)).get("/ncl")
+    match = re.search(
+        r'<script id="fleet-map-data" type="application/json">(.*?)</script>',
+        response.text,
+        re.DOTALL,
+    )
+
+    assert match is not None
+    markers = json.loads(match.group(1))
+    assert {marker["name"] for marker in markers} == {"Norwegian Aqua"}
 
 
 @pytest.mark.parametrize("field", ["mmsi", "imo"])
