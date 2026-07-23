@@ -76,6 +76,12 @@ def create_app(
             ("P&O Cruises", str(app.url_path_for("p_and_o_page"))),
             ("Costa", str(app.url_path_for("costa_page"))),
             ("AIDA", str(app.url_path_for("aida_page"))),
+            ("MSC", str(app.url_path_for("msc_page"))),
+            ("NCL", str(app.url_path_for("ncl_page"))),
+            ("Disney", str(app.url_path_for("dcl_page"))),
+            ("Virgin Voyages", str(app.url_path_for("virgin_voyages_page"))),
+            ("Oceania", str(app.url_path_for("oceania_page"))),
+            ("Regent", str(app.url_path_for("regent_page"))),
             ("All Fleets", str(app.url_path_for("all_fleets_page"))),
         )
         return TEMPLATES.TemplateResponse(
@@ -197,6 +203,54 @@ def create_app(
     @app.get("/profile/aida", response_class=HTMLResponse)
     def aida_profile_page(request: Request):
         return profile_page(request, "aida", "AIDA Cruises")
+
+    @app.get("/msc", response_class=HTMLResponse)
+    def msc_page(request: Request):
+        return profile_page(request, "msc", "MSC Cruises")
+
+    @app.get("/profile/msc", response_class=HTMLResponse)
+    def msc_profile_page(request: Request):
+        return profile_page(request, "msc", "MSC Cruises")
+
+    @app.get("/ncl", response_class=HTMLResponse)
+    def ncl_page(request: Request):
+        return profile_page(request, "ncl", "Norwegian Cruise Line")
+
+    @app.get("/profile/ncl", response_class=HTMLResponse)
+    def ncl_profile_page(request: Request):
+        return profile_page(request, "ncl", "Norwegian Cruise Line")
+
+    @app.get("/dcl", response_class=HTMLResponse)
+    def dcl_page(request: Request):
+        return profile_page(request, "dcl", "Disney Cruise Line")
+
+    @app.get("/profile/dcl", response_class=HTMLResponse)
+    def dcl_profile_page(request: Request):
+        return profile_page(request, "dcl", "Disney Cruise Line")
+
+    @app.get("/virgin-voyages", response_class=HTMLResponse)
+    def virgin_voyages_page(request: Request):
+        return profile_page(request, "vv", "Virgin Voyages")
+
+    @app.get("/profile/vv", response_class=HTMLResponse)
+    def virgin_voyages_profile_page(request: Request):
+        return profile_page(request, "vv", "Virgin Voyages")
+
+    @app.get("/oceania", response_class=HTMLResponse)
+    def oceania_page(request: Request):
+        return profile_page(request, "oceania", "Oceania Cruises")
+
+    @app.get("/profile/oceania", response_class=HTMLResponse)
+    def oceania_profile_page(request: Request):
+        return profile_page(request, "oceania", "Oceania Cruises")
+
+    @app.get("/regent", response_class=HTMLResponse)
+    def regent_page(request: Request):
+        return profile_page(request, "regent", "Regent Seven Seas Cruises")
+
+    @app.get("/profile/regent", response_class=HTMLResponse)
+    def regent_profile_page(request: Request):
+        return profile_page(request, "regent", "Regent Seven Seas Cruises")
 
     @app.get("/all", response_class=HTMLResponse)
     def all_fleets_page(request: Request):

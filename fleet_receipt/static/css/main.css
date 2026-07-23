@@ -402,6 +402,30 @@ h2 {
   background: #db2777;
 }
 
+.fleet-map-marker--msc {
+  background: #1d4ed8;
+}
+
+.fleet-map-marker--ncl {
+  background: #0e7490;
+}
+
+.fleet-map-marker--dcl {
+  background: #4338ca;
+}
+
+.fleet-map-marker--vv {
+  background: #e11d48;
+}
+
+.fleet-map-marker--oceania {
+  background: #0369a1;
+}
+
+.fleet-map-marker--regent {
+  background: #a16207;
+}
+
 .fleet-map-marker--unknown {
   background: #64748b;
 }

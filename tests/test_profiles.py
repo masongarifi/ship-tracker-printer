@@ -100,14 +100,15 @@ def test_all_configured_mmsis_are_in_one_listener_subscription() -> None:
     fleet = load_fleet(profile="all")
     mmsis = [vessel.mmsi for vessel in fleet.vessels if vessel.active and vessel.mmsi]
 
-    first_window = subscription_window(mmsis)
-    second_window = subscription_window(mmsis, len(mmsis) - 50)
-    third_window = subscription_window(mmsis, 2 * (len(mmsis) - 50))
+    windows = []
+    offset = 0
+    for _ in range(5):
+        windows.append(subscription_window(mmsis, offset))
+        offset = (offset + len(mmsis) - 50) % len(mmsis)
 
-    assert len(mmsis) == 138
-    assert len(first_window) == 50
-    assert len(second_window) == 50
-    assert set(mmsis) == set(first_window) | set(second_window) | set(third_window)
+    assert len(mmsis) == 208
+    assert all(len(window) == 50 for window in windows)
+    assert set(mmsis) == set().union(*map(set, windows))
     assert CELEBRITY_MMSIS <= set(mmsis)
     assert ROYAL_CARIBBEAN_MMSIS <= set(mmsis)
     with pytest.raises(AISStreamError, match="at most 50"):
@@ -157,7 +158,7 @@ def test_listener_loads_every_profile(monkeypatch, tmp_path) -> None:
     assert cli.main(["listen"]) == 130
     assert CELEBRITY_MMSIS <= received_mmsis
     assert ROYAL_CARIBBEAN_MMSIS <= received_mmsis
-    assert len(received_mmsis) == 138
+    assert len(received_mmsis) == 208
 
 
 def test_celebrity_cached_preview_filters_shared_cache(tmp_path, monkeypatch) -> None:

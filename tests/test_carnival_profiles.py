@@ -53,7 +53,7 @@ def test_all_identifiers_are_valid_and_unique_across_fleets():
     mmsis = [vessel.mmsi for vessel in vessels]
     imos = [vessel.imo for vessel in vessels]
 
-    assert len(vessels) == 138
+    assert len(vessels) == 208
     assert len(set(mmsis)) == len(mmsis)
     assert len(set(imos)) == len(imos)
     assert all(value and len(value) == 9 and value.isdigit() for value in mmsis)
@@ -79,7 +79,7 @@ def test_homepage_cards_and_totals_include_new_fleets(tmp_path):
         assert f'href="http://testserver/{profile}"' in response.text
         assert html.escape(line_name.split()[0]) in response.text
         assert f"{count} ships" in response.text
-    assert "138" in response.text
+    assert "208" in response.text
 
 
 def test_all_fleets_report_groups_new_brands(tmp_path):

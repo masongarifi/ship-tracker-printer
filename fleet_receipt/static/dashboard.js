@@ -12,6 +12,12 @@
     "P&O Cruises": "fleet-map-marker--p-and-o",
     "Costa Cruises": "fleet-map-marker--costa",
     "AIDA Cruises": "fleet-map-marker--aida",
+    "MSC Cruises": "fleet-map-marker--msc",
+    "Norwegian Cruise Line": "fleet-map-marker--ncl",
+    "Disney Cruise Line": "fleet-map-marker--dcl",
+    "Virgin Voyages": "fleet-map-marker--vv",
+    "Oceania Cruises": "fleet-map-marker--oceania",
+    "Regent Seven Seas Cruises": "fleet-map-marker--regent",
   });
 
   document.addEventListener("DOMContentLoaded", initializeFleetMap, { once: true });

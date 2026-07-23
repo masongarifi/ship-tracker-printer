@@ -78,6 +78,48 @@ FLEET_PROFILES = (
         "mark": "AIDA",
         "route_name": "aida_page",
     },
+    {
+        "slug": "msc",
+        "name": "MSC Cruises",
+        "config_name": "MSC Cruises",
+        "mark": "MSC",
+        "route_name": "msc_page",
+    },
+    {
+        "slug": "ncl",
+        "name": "Norwegian Cruise Line",
+        "config_name": "Norwegian Cruise Line",
+        "mark": "NCL",
+        "route_name": "ncl_page",
+    },
+    {
+        "slug": "dcl",
+        "name": "Disney Cruise Line",
+        "config_name": "Disney Cruise Line",
+        "mark": "DCL",
+        "route_name": "dcl_page",
+    },
+    {
+        "slug": "vv",
+        "name": "Virgin Voyages",
+        "config_name": "Virgin Voyages",
+        "mark": "VV",
+        "route_name": "virgin_voyages_page",
+    },
+    {
+        "slug": "oceania",
+        "name": "Oceania Cruises",
+        "config_name": "Oceania Cruises",
+        "mark": "OCN",
+        "route_name": "oceania_page",
+    },
+    {
+        "slug": "regent",
+        "name": "Regent Seven Seas Cruises",
+        "config_name": "Regent Seven Seas Cruises",
+        "mark": "RSSC",
+        "route_name": "regent_page",
+    },
 )
 
 

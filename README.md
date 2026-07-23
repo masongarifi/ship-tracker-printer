@@ -5,7 +5,7 @@ multi-brand fleet operations briefings. Its target is an Epson TM-L90 connected
 to a Raspberry Pi; the safe text backend supports development before printer
 hardware is connected.
 
-The fleet is configuration, not application code. All 138 configured vessels
+The fleet is configuration, not application code. All 208 configured vessels
 and their IMO/MMSI identifiers are in `config/fleet.yaml`.
 
 | Profile | Fleet | Vessels |
@@ -20,6 +20,12 @@ and their IMO/MMSI identifiers are in `config/fleet.yaml`.
 | `p-and-o` | P&O Cruises | 7 |
 | `costa` | Costa Cruises | 9 |
 | `aida` | AIDA Cruises | 11 |
+| `msc` | MSC Cruises | 23 |
+| `ncl` | Norwegian Cruise Line | 21 |
+| `dcl` | Disney Cruise Line | 8 |
+| `vv` | Virgin Voyages | 4 |
+| `oceania` | Oceania Cruises | 8 |
+| `regent` | Regent Seven Seas Cruises | 6 |
 
 ## Phase 1 capabilities
 
@@ -102,7 +108,7 @@ the vessel broadcasts them.
 One listener tracks every active ship from every configured fleet profile over
 one AISstream.io websocket connection. Because AISstream.io permits at most 50
 MMSIs per subscription, the listener rotates a deduplicated 50-ship window
-across all 138 ships every 30 seconds. Three consecutive windows cover the full
+across all 208 ships every 30 seconds. Five consecutive windows cover the full
 fleet. All updates are written to the same persistent SQLite cache.
 Fleet-specific commands and web pages only filter what is displayed; they do
 not start another listener or create another database.
@@ -188,6 +194,12 @@ Available routes:
 - `/p-and-o` and `/profile/p-and-o` — P&O Cruises report
 - `/costa` and `/profile/costa` — Costa Cruises report
 - `/aida` and `/profile/aida` — AIDA Cruises report
+- `/msc` and `/profile/msc` — MSC Cruises report
+- `/ncl` and `/profile/ncl` — Norwegian Cruise Line report
+- `/dcl` and `/profile/dcl` — Disney Cruise Line report
+- `/virgin-voyages` and `/profile/vv` — Virgin Voyages report
+- `/oceania` and `/profile/oceania` — Oceania Cruises report
+- `/regent` and `/profile/regent` — Regent Seven Seas Cruises report
 - `/all` — every configured fleet, grouped by cruise line
 - `/search?q=...` — ship search by name, IMO, or MMSI
 - `/ship/{ship-name}` — cached vessel details

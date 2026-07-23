@@ -60,7 +60,7 @@ def test_dashboard_summarizes_fleets_and_spotlights_from_cache() -> None:
     assert cards["hal"]["underway"] == 1
     assert cards["celebrity"]["total"] == 15
     assert cards["celebrity"]["moored"] == 1
-    assert dashboard["statistics"][0]["value"] == 138
+    assert dashboard["statistics"][0]["value"] == 208
     assert dashboard["statistics"][1]["value"] == 1
     assert dashboard["statistics"][2]["value"] == 1
     assert dashboard["statistics"][3]["value"] == "1 minute ago"

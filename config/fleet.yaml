@@ -195,6 +195,112 @@
         {"name": "AIDAsol", "imo": "9490040", "mmsi": "247302900", "active": true, "aliases": ["AIDASOL"]},
         {"name": "AIDAstella", "imo": "9601132", "mmsi": "247322800", "active": true, "aliases": ["AIDASTELLA"]}
       ]
+    },
+    {
+      "name": "MSC Cruises",
+      "profile": "msc",
+      "vessels": [
+        {"name": "MSC Armonia", "imo": "9210141", "mmsi": "357281000", "active": true},
+        {"name": "MSC Bellissima", "imo": "9760524", "mmsi": "248992000", "active": true},
+        {"name": "MSC Divina", "imo": "9585285", "mmsi": "373178000", "active": true},
+        {"name": "MSC Euribia", "imo": "9901544", "mmsi": "256281000", "active": true},
+        {"name": "MSC Fantasia", "imo": "9359791", "mmsi": "370648000", "active": true},
+        {"name": "MSC Grandiosa", "imo": "9803613", "mmsi": "215325000", "active": true},
+        {"name": "MSC Lirica", "imo": "9246102", "mmsi": "356042000", "active": true},
+        {"name": "MSC Magnifica", "imo": "9387085", "mmsi": "352594000", "active": true},
+        {"name": "MSC Meraviglia", "imo": "9760512", "mmsi": "249973000", "active": true},
+        {"name": "MSC Musica", "imo": "9320087", "mmsi": "352003000", "active": true},
+        {"name": "MSC Opera", "imo": "9250464", "mmsi": "357627000", "active": true},
+        {"name": "MSC Orchestra", "imo": "9320099", "mmsi": "372497000", "active": true},
+        {"name": "MSC Poesia", "imo": "9387073", "mmsi": "355931000", "active": true},
+        {"name": "MSC Preziosa", "imo": "9595321", "mmsi": "371861000", "active": true},
+        {"name": "MSC Seascape", "imo": "9843807", "mmsi": "256059000", "active": true},
+        {"name": "MSC Seashore", "imo": "9843792", "mmsi": "215920000", "active": true},
+        {"name": "MSC Seaside", "imo": "9745366", "mmsi": "248392000", "active": true},
+        {"name": "MSC Seaview", "imo": "9745378", "mmsi": "248717000", "active": true},
+        {"name": "MSC Sinfonia", "imo": "9210153", "mmsi": "357270000", "active": true},
+        {"name": "MSC Splendida", "imo": "9359806", "mmsi": "357698000", "active": true},
+        {"name": "MSC Virtuosa", "imo": "9803625", "mmsi": "215610000", "active": true},
+        {"name": "MSC World America", "imo": "9837432", "mmsi": "249193000", "active": true},
+        {"name": "MSC World Europa", "imo": "9837420", "mmsi": "256070000", "active": true}
+      ]
+    },
+    {
+      "name": "Norwegian Cruise Line",
+      "profile": "ncl",
+      "vessels": [
+        {"name": "Norwegian Aqua", "imo": "9824007", "mmsi": "311001559", "active": true, "aliases": ["NCL Aqua"]},
+        {"name": "Norwegian Bliss", "imo": "9751509", "mmsi": "311000710", "active": true, "aliases": ["NCL Bliss"]},
+        {"name": "Norwegian Breakaway", "imo": "9606912", "mmsi": "311050800", "active": true, "aliases": ["NCL Breakaway"]},
+        {"name": "Norwegian Dawn", "imo": "9195169", "mmsi": "311307000", "active": true, "aliases": ["NCL Dawn"]},
+        {"name": "Norwegian Encore", "imo": "9751511", "mmsi": "311000879", "active": true, "aliases": ["NCL Encore"]},
+        {"name": "Norwegian Epic", "imo": "9410569", "mmsi": "311018500", "active": true, "aliases": ["NCL Epic"]},
+        {"name": "Norwegian Escape", "imo": "9677076", "mmsi": "311000341", "active": true, "aliases": ["NCL Escape"]},
+        {"name": "Norwegian Gem", "imo": "9355733", "mmsi": "309951000", "active": true, "aliases": ["NCL Gem"]},
+        {"name": "Norwegian Getaway", "imo": "9606924", "mmsi": "311050900", "active": true, "aliases": ["NCL Getaway"]},
+        {"name": "Norwegian Jade", "imo": "9304057", "mmsi": "308416000", "active": true, "aliases": ["NCL Jade"]},
+        {"name": "Norwegian Jewel", "imo": "9304045", "mmsi": "311827000", "active": true, "aliases": ["NCL Jewel"]},
+        {"name": "Norwegian Joy", "imo": "9703796", "mmsi": "311000599", "active": true, "aliases": ["NCL Joy"]},
+        {"name": "Norwegian Luna", "imo": "9824019", "mmsi": "311001704", "active": true, "aliases": ["NCL Luna"]},
+        {"name": "Norwegian Pearl", "imo": "9342281", "mmsi": "309653000", "active": true, "aliases": ["NCL Pearl"]},
+        {"name": "Norwegian Prima", "imo": "9823986", "mmsi": "311001059", "active": true, "aliases": ["NCL Prima"]},
+        {"name": "Norwegian Sky", "imo": "9128532", "mmsi": "308865000", "active": true, "aliases": ["NCL Sky"]},
+        {"name": "Norwegian Spirit", "imo": "9141065", "mmsi": "311746000", "active": true, "aliases": ["NCL Spirit"]},
+        {"name": "Norwegian Star", "imo": "9195157", "mmsi": "311082000", "active": true, "aliases": ["NCL Star"]},
+        {"name": "Norwegian Sun", "imo": "9218131", "mmsi": "311109000", "active": true, "aliases": ["NCL Sun"]},
+        {"name": "Norwegian Viva", "imo": "9823998", "mmsi": "311001127", "active": true, "aliases": ["NCL Viva"]},
+        {"name": "Pride of America", "imo": "9209221", "mmsi": "366994450", "active": true, "aliases": ["NCL Pride of America"]}
+      ]
+    },
+    {
+      "name": "Disney Cruise Line",
+      "profile": "dcl",
+      "vessels": [
+        {"name": "Disney Adventure", "imo": "9808986", "mmsi": "311000934", "active": true},
+        {"name": "Disney Destiny", "imo": "9834741", "mmsi": "311001540", "active": true},
+        {"name": "Disney Dream", "imo": "9434254", "mmsi": "311042900", "active": true},
+        {"name": "Disney Fantasy", "imo": "9445590", "mmsi": "311058700", "active": true},
+        {"name": "Disney Magic", "imo": "9126807", "mmsi": "308516000", "active": true},
+        {"name": "Disney Treasure", "imo": "9834753", "mmsi": "311001221", "active": true},
+        {"name": "Disney Wish", "imo": "9834739", "mmsi": "311001098", "active": true},
+        {"name": "Disney Wonder", "imo": "9126819", "mmsi": "308457000", "active": true}
+      ]
+    },
+    {
+      "name": "Virgin Voyages",
+      "profile": "vv",
+      "vessels": [
+        {"name": "Brilliant Lady", "imo": "9870654", "mmsi": "311001167", "active": true, "aliases": ["Virgin Brilliant Lady"]},
+        {"name": "Resilient Lady", "imo": "9805348", "mmsi": "311001056", "active": true, "aliases": ["Virgin Resilient Lady"]},
+        {"name": "Scarlet Lady", "imo": "9804801", "mmsi": "311000807", "active": true, "aliases": ["Virgin Scarlet Lady"]},
+        {"name": "Valiant Lady", "imo": "9805336", "mmsi": "311000983", "active": true, "aliases": ["Virgin Valiant Lady"]}
+      ]
+    },
+    {
+      "name": "Oceania Cruises",
+      "profile": "oceania",
+      "vessels": [
+        {"name": "Allura", "imo": "9876969", "mmsi": "538011254", "active": true, "aliases": ["Oceania Allura"]},
+        {"name": "Insignia", "imo": "9156462", "mmsi": "538001663", "active": true, "aliases": ["Oceania Insignia"]},
+        {"name": "Marina", "imo": "9438066", "mmsi": "538003668", "active": true, "aliases": ["Oceania Marina"]},
+        {"name": "Nautica", "imo": "9200938", "mmsi": "538001665", "active": true, "aliases": ["Oceania Nautica"]},
+        {"name": "Regatta", "imo": "9156474", "mmsi": "538001664", "active": true, "aliases": ["Oceania Regatta"]},
+        {"name": "Riviera", "imo": "9438078", "mmsi": "538004353", "active": true, "aliases": ["Oceania Riviera"]},
+        {"name": "Sirena", "imo": "9187899", "mmsi": "538006842", "active": true, "aliases": ["Oceania Sirena"]},
+        {"name": "Vista", "imo": "9876957", "mmsi": "538009952", "active": true, "aliases": ["Oceania Vista"]}
+      ]
+    },
+    {
+      "name": "Regent Seven Seas Cruises",
+      "profile": "regent",
+      "vessels": [
+        {"name": "Seven Seas Explorer", "imo": "9703150", "mmsi": "538006712", "active": true, "aliases": ["Regent Explorer"]},
+        {"name": "Seven Seas Grandeur", "imo": "9877444", "mmsi": "538010706", "active": true, "aliases": ["Regent Grandeur"]},
+        {"name": "Seven Seas Mariner", "imo": "9210139", "mmsi": "311622000", "active": true, "aliases": ["Regent Mariner"]},
+        {"name": "Seven Seas Navigator", "imo": "9064126", "mmsi": "311050600", "active": true, "aliases": ["Regent Navigator"]},
+        {"name": "Seven Seas Splendor", "imo": "9807085", "mmsi": "538007808", "active": true, "aliases": ["Regent Splendor"]},
+        {"name": "Seven Seas Voyager", "imo": "9247144", "mmsi": "311513000", "active": true, "aliases": ["Regent Voyager"]}
+      ]
     }
   ]
 }
