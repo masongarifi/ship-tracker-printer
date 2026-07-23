@@ -1,171 +1,85 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Live cruise fleet positions and operational status.">
-  <title>Fleet Tracker · Live Cruise Fleet Dashboard</title>
+{% extends "base.html" %}
+
+{% block title %}Fleet Tracker · Live Cruise Fleet Dashboard{% endblock %}
+
+{% block extra_head %}
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >
-  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}">
-</head>
-<body>
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="/" aria-label="Fleet Tracker home">
-        <span class="brand-mark" aria-hidden="true">FT</span>
-        <span>
-          <strong>Fleet Tracker</strong>
-          <small>Live Cruise Fleet Dashboard</small>
-        </span>
-      </a>
-      <span class="live-indicator"><span aria-hidden="true">●</span> Live</span>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+<main>
+  <section class="hero" aria-labelledby="overview-heading">
+    <div>
+      <p class="eyebrow">Maritime operations overview</p>
+      <h1 id="overview-heading">Every fleet. One clear view.</h1>
+      <p class="hero-copy">Latest available AIS positions for {{ dashboard.cached_ship_count }}
+        ships currently reporting across four cruise fleets.</p>
     </div>
-  </header>
+    <form class="search" action="{{ url_for('search_page') }}" method="get" role="search">
+      <label class="sr-only" for="fleet-search">Search ships</label>
+      <input id="fleet-search" name="q" type="search" placeholder="Search ship name, IMO, or MMSI"
+             autocomplete="off" required>
+      <button class="button" type="submit">Search</button>
+    </form>
+  </section>
 
-  <main>
-    <section class="hero" aria-labelledby="overview-heading">
-      <div>
-        <p class="eyebrow">Maritime operations overview</p>
-        <h1 id="overview-heading">Every fleet. One clear view.</h1>
-        <p class="hero-copy">
-          Latest available AIS positions for {{ dashboard.cached_ship_count }}
-          ships currently reporting across four cruise fleets.
-        </p>
-      </div>
-      <form class="search" action="/search" method="get" role="search">
-        <label class="sr-only" for="fleet-search">Search ships</label>
-        <input
-          id="fleet-search"
-          name="q"
-          type="search"
-          placeholder="Search ship name, IMO, or MMSI"
-          autocomplete="off"
-          required
-        >
-        <button type="submit">Search</button>
-      </form>
-    </section>
-
-    <section class="panel map-panel" aria-labelledby="map-heading">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Live positions</p>
-          <h2 id="map-heading">Fleet map</h2>
-        </div>
-        <span class="section-note">OpenStreetMap · Cached AIS data</span>
-      </div>
-      <div id="fleet-map" role="application" aria-label="Interactive world map of cached ships">
-        <p class="map-empty">Loading map…</p>
-      </div>
-      <noscript><p class="map-notice">JavaScript is required to display the map.</p></noscript>
-    </section>
-
-    <section aria-labelledby="fleets-heading">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Fleet profiles</p>
-          <h2 id="fleets-heading">Select a fleet</h2>
-        </div>
-      </div>
-      <div class="fleet-grid">
-        {% for fleet in dashboard.fleet_cards %}
-          <a class="fleet-card" href="{{ url_for(fleet.route_name) }}">
-            <span class="fleet-logo" aria-hidden="true">{{ fleet.mark }}</span>
-            <span class="fleet-card-title">{{ fleet.name }}</span>
-            <span class="fleet-count">{{ fleet.total }} ships</span>
-            <span class="fleet-metrics">
-              <span><strong>{{ fleet.underway }}</strong> underway</span>
-              <span><strong>{{ fleet.moored }}</strong> moored</span>
-            </span>
-            <span class="card-action">View Fleet <span aria-hidden="true">→</span></span>
-          </a>
-        {% endfor %}
-      </div>
-    </section>
-
-    <section class="stats-section" aria-labelledby="statistics-heading">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">At a glance</p>
-          <h2 id="statistics-heading">Fleet statistics</h2>
-        </div>
-      </div>
-      <div class="stats-grid">
-        {% for statistic in dashboard.statistics %}
-          <article class="stat-card">
-            <span>{{ statistic.label }}</span>
-            <strong>{{ statistic.value }}</strong>
-          </article>
-        {% endfor %}
-      </div>
-    </section>
-
-    <div class="lower-grid">
-      <section class="panel" aria-labelledby="spotlight-heading">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">Fleet intelligence</p>
-            <h2 id="spotlight-heading">Spotlight</h2>
-          </div>
-        </div>
-        <dl class="spotlight-list">
-          {% for item in dashboard.spotlights %}
-            <div>
-              <dt>{{ item.label }}</dt>
-              <dd>{{ item.value }}</dd>
-            </div>
-          {% endfor %}
-        </dl>
-      </section>
-
-      <section class="panel" aria-labelledby="changes-heading">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">Latest activity</p>
-            <h2 id="changes-heading">Recent status changes</h2>
-          </div>
-        </div>
-        {% if dashboard.recent_changes %}
-          <ol class="activity-list">
-            {% for change in dashboard.recent_changes %}
-              <li>{{ change }}</li>
-            {% endfor %}
-          </ol>
-        {% else %}
-          <div class="unavailable">
-            <strong>Unavailable</strong>
-            <p>Status history is not recorded in the current position cache.</p>
-          </div>
-        {% endif %}
-      </section>
+  <section class="panel map-panel" aria-labelledby="map-heading">
+    <div class="section-heading">
+      <div><p class="eyebrow">Live positions</p><h2 id="map-heading">Fleet map</h2></div>
+      <span class="section-note">OpenStreetMap · Cached AIS data</span>
     </div>
-  </main>
-
-  <footer>
-    <div class="footer-inner">
-      <div>
-        <strong>Fleet Tracker</strong>
-        <span>Version {{ version }}</span>
-      </div>
-      <p>
-        Powered by
-        <span>AISStream</span>
-        <span>FastAPI</span>
-        <span>SQLite</span>
-        <span>Cloudflare Tunnel</span>
-      </p>
+    <div id="fleet-map" role="application" aria-label="Interactive world map of cached ships">
+      <p class="map-empty">Loading map…</p>
     </div>
-  </footer>
+    <noscript><p class="map-notice">JavaScript is required to display the map.</p></noscript>
+  </section>
 
+  <section aria-labelledby="fleets-heading">
+    <div class="section-heading"><div><p class="eyebrow">Fleet profiles</p><h2 id="fleets-heading">Select a fleet</h2></div></div>
+    <div class="fleet-grid">
+      {% for fleet in dashboard.fleet_cards %}
+        <a class="fleet-card" href="{{ url_for(fleet.route_name) }}">
+          <span class="fleet-logo" aria-hidden="true">{{ fleet.mark }}</span>
+          <span class="fleet-card-title">{{ fleet.name }}</span>
+          <span class="fleet-count">{{ fleet.total }} ships</span>
+          <span class="fleet-metrics"><span><strong>{{ fleet.underway }}</strong> underway</span>
+            <span><strong>{{ fleet.moored }}</strong> moored</span></span>
+          <span class="card-action button">View Fleet <span aria-hidden="true">→</span></span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="stats-section" aria-labelledby="statistics-heading">
+    <div class="section-heading"><div><p class="eyebrow">At a glance</p><h2 id="statistics-heading">Fleet statistics</h2></div></div>
+    <div class="stats-grid">
+      {% for statistic in dashboard.statistics %}
+        <article class="stat-card"><span>{{ statistic.label }}</span><strong>{{ statistic.value }}</strong></article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="lower-grid">
+    <section class="panel" aria-labelledby="spotlight-heading">
+      <div class="section-heading compact"><div><p class="eyebrow">Fleet intelligence</p><h2 id="spotlight-heading">Spotlight</h2></div></div>
+      <dl class="spotlight-list">{% for item in dashboard.spotlights %}<div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>{% endfor %}</dl>
+    </section>
+    <section class="panel" aria-labelledby="changes-heading">
+      <div class="section-heading compact"><div><p class="eyebrow">Latest activity</p><h2 id="changes-heading">Recent status changes</h2></div></div>
+      {% if dashboard.recent_changes %}
+        <ol class="activity-list">{% for change in dashboard.recent_changes %}<li>{{ change }}</li>{% endfor %}</ol>
+      {% else %}
+        <div class="unavailable"><strong>Unavailable</strong><p>Status history is not recorded in the current position cache.</p></div>
+      {% endif %}
+    </section>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
   <script id="fleet-map-data" type="application/json">{{ dashboard.markers | tojson }}</script>
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  ></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="{{ url_for('static', path='/dashboard.js') }}?v={{ version }}" defer></script>
-</body>
-</html>
+{% endblock %}

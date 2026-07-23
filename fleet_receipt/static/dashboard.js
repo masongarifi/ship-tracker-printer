@@ -1,6 +1,15 @@
 (() => {
   "use strict";
 
+  const GENERIC_FLEET_ICON = "/static/img/fleets/generic-ship.png";
+  const FLEET_ICONS = Object.freeze({
+    "Holland America Line": "/static/img/fleets/holland-america.png",
+    Seabourn: "/static/img/fleets/seabourn.png",
+    "Celebrity Cruises": "/static/img/fleets/celebrity.png",
+    "Royal Caribbean International":
+      "/static/img/fleets/royal-caribbean.png",
+  });
+
   document.addEventListener("DOMContentLoaded", initializeFleetMap, { once: true });
 
   function initializeFleetMap() {
@@ -90,16 +99,42 @@
       return;
     }
 
-    const marker = window.L.circleMarker([latitude, longitude], {
-      radius: 6,
-      weight: 2,
-      color: "#ffffff",
-      fillColor: statusColor(ship.status),
-      fillOpacity: 0.95,
+    const marker = window.L.marker([latitude, longitude], {
+      icon: fleetIcon(ship.fleet),
+      riseOnHover: true,
     });
+    marker.on("add", () => installIconFallback(marker));
     marker.bindPopup(popupContent(ship));
     marker.addTo(map);
     bounds.push([latitude, longitude]);
+  }
+
+  function fleetIcon(fleet) {
+    const iconPath = FLEET_ICONS[String(fleet)] || GENERIC_FLEET_ICON;
+    return window.L.divIcon({
+      className: "fleet-map-marker",
+      html: `<img src="${iconPath}" alt="" width="26" height="26">`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+      popupAnchor: [0, -19],
+    });
+  }
+
+  function installIconFallback(marker) {
+    const image = marker.getElement()?.querySelector("img");
+    if (!image || image.dataset.fallbackInstalled === "true") {
+      return;
+    }
+    image.dataset.fallbackInstalled = "true";
+    image.addEventListener(
+      "error",
+      () => {
+        if (!image.src.endsWith(GENERIC_FLEET_ICON)) {
+          image.src = GENERIC_FLEET_ICON;
+        }
+      },
+      { once: true },
+    );
   }
 
   function setInitialView(map, bounds) {
@@ -117,20 +152,6 @@
     notice.className = "map-empty";
     notice.textContent = message;
     mapElement.replaceChildren(notice);
-  }
-
-  function statusColor(status) {
-    const normalized = String(status).toLowerCase();
-    if (normalized.includes("underway") || normalized.includes("under way")) {
-      return "#2186cf";
-    }
-    if (normalized.includes("moored")) {
-      return "#31a66a";
-    }
-    if (normalized.includes("anchor")) {
-      return "#d79b2e";
-    }
-    return "#667b8d";
   }
 
   function popupContent(ship) {

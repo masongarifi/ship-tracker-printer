@@ -31,6 +31,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--white);
   color: var(--ink);
 }
@@ -57,6 +58,23 @@ main,
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.page-context {
+  max-width: 18rem;
+  overflow: hidden;
+  color: #c5d3de;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand {
@@ -180,23 +198,66 @@ h2 {
   outline: none;
 }
 
-.search button,
-.card-action {
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
   border: 0;
   border-radius: 0.6rem;
   background: var(--blue-600);
   color: var(--white);
+  font: inherit;
   font-weight: 750;
-}
-
-.search button {
-  padding: 0.7rem 1rem;
+  line-height: 1.1;
+  text-decoration: none;
   cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease,
+    color 120ms ease, transform 120ms ease;
 }
 
-.search button:hover,
-.search button:focus-visible {
+.search .button {
+  padding: 0.7rem 1rem;
+}
+
+.button:hover,
+.button:focus-visible {
   background: var(--navy-700);
+  outline: 3px solid rgb(33 134 207 / 28%);
+  outline-offset: 2px;
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.button-secondary {
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--blue-600);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.78rem;
+}
+
+.site-header .button-secondary {
+  border-color: rgb(255 255 255 / 26%);
+  background: rgb(255 255 255 / 8%);
+  color: var(--white);
+}
+
+.button-secondary:hover,
+.button-secondary:focus-visible,
+.site-header .button-secondary:hover,
+.site-header .button-secondary:focus-visible {
+  border-color: #8ebbd9;
+  background: var(--blue-100);
+  color: var(--navy-950);
 }
 
 .panel {
@@ -288,6 +349,24 @@ h2 {
   text-decoration: none;
 }
 
+.fleet-map-marker {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #6f8493;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 2px 7px rgb(7 27 45 / 28%);
+}
+
+.fleet-map-marker img {
+  width: 26px;
+  height: 26px;
+  display: block;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
 .fleet-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -366,6 +445,11 @@ h2 {
   margin-top: auto;
   padding: 0.65rem 0.8rem;
   font-size: 0.78rem;
+}
+
+.fleet-card:hover .card-action,
+.fleet-card:focus-visible .card-action {
+  background: var(--navy-700);
 }
 
 .stats-section {
@@ -604,6 +688,79 @@ footer {
   font-weight: 750;
 }
 
+.receipt-page {
+  width: min(100% - 2rem, 58rem);
+}
+
+.receipt-intro h1 {
+  margin-bottom: 0.4rem;
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+}
+
+.refreshed {
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.fleet-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.receipt-card {
+  max-width: 48rem;
+  padding: clamp(0.85rem, 3vw, 1.4rem);
+  background: var(--white);
+}
+
+.receipt-card pre {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font: 500 clamp(0.72rem, 2.2vw, 0.94rem)/1.36 ui-monospace,
+    SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  tab-size: 2;
+  white-space: pre-wrap;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  font-size: 0.84rem;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--navy-900);
+  color: var(--white);
+}
+
+th,
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--surface);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -641,6 +798,18 @@ footer {
 
   .header-inner {
     min-height: 4.5rem;
+    align-items: flex-start;
+    flex-direction: column;
+    padding-block: 0.75rem;
+  }
+
+  .top-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .page-context {
+    display: none;
   }
 
   main {
@@ -692,5 +861,28 @@ footer {
 
   .result-list a {
     align-items: flex-start;
+  }
+
+  .receipt-page {
+    width: min(100% - 1rem, 58rem);
+  }
+
+  .fleet-switcher {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fleet-switcher .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 28rem) {
+  .fleet-switcher {
+    grid-template-columns: 1fr;
+  }
+
+  .home-link {
+    padding-inline: 0.65rem;
   }
 }

@@ -1,4 +1,3 @@
-import html
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
@@ -45,7 +44,7 @@ def create_app(
         name="static",
     )
 
-    def profile_page(fleet_profile: str, heading: str):
+    def profile_page(request: Request, fleet_profile: str, heading: str):
         refreshed_at = _aware_utc(clock())
         report = _render_profile(active_cache, refreshed_at, fleet_profile)
         navigation = (
@@ -60,8 +59,19 @@ def create_app(
             ),
             ("All Fleets", str(app.url_path_for("all_fleets_page"))),
         )
-        return HTMLResponse(
-            _receipt_html(report, refreshed_at, heading, navigation),
+        return TEMPLATES.TemplateResponse(
+            request=request,
+            name="fleet.html",
+            context={
+                "report": report,
+                "refreshed_at": refreshed_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "heading": heading,
+                "navigation": navigation,
+                "page_title": f"Fleet Operations Brief — {heading}",
+                "page_subtitle": heading,
+                "version": __version__,
+                "refresh_seconds": REFRESH_SECONDS,
+            },
             headers={"Cache-Control": "no-store"},
         )
 
@@ -76,7 +86,12 @@ def create_app(
         return TEMPLATES.TemplateResponse(
             request=request,
             name="dashboard.html",
-            context={"dashboard": dashboard, "version": __version__},
+            context={
+                "dashboard": dashboard,
+                "version": __version__,
+                "page_title": "Live Cruise Fleet Dashboard",
+                "page_subtitle": "Live Cruise Fleet Dashboard",
+            },
             headers={"Cache-Control": "no-store"},
         )
 
@@ -85,36 +100,40 @@ def create_app(
         response_class=HTMLResponse,
         name="combined_fleet_page",
     )
-    def combined_fleet_page():
-        return profile_page("main", "HAL + Seabourn")
+    def combined_fleet_page(request: Request):
+        return profile_page(request, "main", "HAL + Seabourn")
 
     @app.get("/hal", response_class=HTMLResponse)
-    def hal_page():
-        return profile_page("hal", "Holland America")
+    def hal_page(request: Request):
+        return profile_page(request, "hal", "Holland America")
 
     @app.get("/seabourn", response_class=HTMLResponse)
-    def seabourn_page():
-        return profile_page("seabourn", "Seabourn")
+    def seabourn_page(request: Request):
+        return profile_page(request, "seabourn", "Seabourn")
 
     @app.get("/celebrity", response_class=HTMLResponse)
-    def celebrity_page():
-        return profile_page("celebrity", "Celebrity Cruises")
+    def celebrity_page(request: Request):
+        return profile_page(request, "celebrity", "Celebrity Cruises")
 
     @app.get("/profile/celebrity", response_class=HTMLResponse)
-    def celebrity_profile_page():
-        return profile_page("celebrity", "Celebrity Cruises")
+    def celebrity_profile_page(request: Request):
+        return profile_page(request, "celebrity", "Celebrity Cruises")
 
     @app.get("/royal-caribbean", response_class=HTMLResponse)
-    def royal_caribbean_page():
-        return profile_page("royal-caribbean", "Royal Caribbean International")
+    def royal_caribbean_page(request: Request):
+        return profile_page(
+            request, "royal-caribbean", "Royal Caribbean International"
+        )
 
     @app.get("/profile/royal-caribbean", response_class=HTMLResponse)
-    def royal_caribbean_profile_page():
-        return profile_page("royal-caribbean", "Royal Caribbean International")
+    def royal_caribbean_profile_page(request: Request):
+        return profile_page(
+            request, "royal-caribbean", "Royal Caribbean International"
+        )
 
     @app.get("/all", response_class=HTMLResponse)
-    def all_fleets_page():
-        return profile_page("all", "All Fleets")
+    def all_fleets_page(request: Request):
+        return profile_page(request, "all", "All Fleets")
 
     @app.get("/search", response_class=HTMLResponse)
     def search_page(request: Request, q: str = ""):
@@ -138,6 +157,9 @@ def create_app(
                     }
                     for vessel in results
                 ],
+                "version": __version__,
+                "page_title": "Ship Search",
+                "page_subtitle": "Ship Search",
             },
             headers={"Cache-Control": "no-store"},
         )
@@ -153,7 +175,12 @@ def create_app(
         return TEMPLATES.TemplateResponse(
             request=request,
             name="ship.html",
-            context={"ship": ship},
+            context={
+                "ship": ship,
+                "version": __version__,
+                "page_title": vessel.name,
+                "page_subtitle": "Vessel Details",
+            },
             headers={"Cache-Control": "no-store"},
         )
 
@@ -203,109 +230,6 @@ def _render_profile(
         )
     except ConfigurationError as exc:
         raise HTTPException(status_code=404, detail="Unknown fleet profile") from exc
-
-
-def _receipt_html(
-    report: str,
-    refreshed_at: datetime,
-    heading: str,
-    navigation,
-) -> str:
-    safe_report = html.escape(report)
-    refreshed = html.escape(refreshed_at.strftime("%Y-%m-%d %H:%M:%S UTC"))
-    safe_heading = html.escape(heading)
-    navigation_html = "\n".join(
-        f'      <a href="{html.escape(path)}">{html.escape(label)}</a>'
-        for label, path in navigation
-    )
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="{REFRESH_SECONDS}">
-  <title>Fleet Operations Brief</title>
-  <style>
-    :root {{
-      color-scheme: light;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-                   "Liberation Mono", "Courier New", monospace;
-      background: #eeeae1;
-      color: #181815;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      padding: clamp(0.75rem, 3vw, 2rem);
-      min-height: 100vh;
-      background: #eeeae1;
-    }}
-    main {{
-      width: min(100%, 48rem);
-      margin: 0 auto;
-    }}
-    h1 {{
-      margin: 0 0 0.35rem;
-      font: 700 clamp(1rem, 4vw, 1.25rem)/1.2 system-ui, sans-serif;
-      letter-spacing: 0.02em;
-    }}
-    .refreshed {{
-      margin: 0 0 0.8rem;
-      color: #605e56;
-      font: 500 0.78rem/1.4 system-ui, sans-serif;
-    }}
-    nav {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      margin: 0 0 0.8rem;
-    }}
-    nav a {{
-      border: 1px solid #c7c1b3;
-      border-radius: 999px;
-      padding: 0.35rem 0.65rem;
-      background: #fffef9;
-      color: #292821;
-      font: 600 0.76rem/1 system-ui, sans-serif;
-      text-decoration: none;
-    }}
-    nav a:hover, nav a:focus-visible {{
-      border-color: #6f6a5f;
-      outline: none;
-    }}
-    pre {{
-      margin: 0;
-      padding: clamp(0.85rem, 3vw, 1.4rem);
-      border: 1px solid #d5d0c4;
-      border-radius: 0.35rem;
-      background: #fffef9;
-      color: #181815;
-      box-shadow: 0 0.3rem 1.2rem rgb(45 40 30 / 8%);
-      font: 500 clamp(0.72rem, 2.6vw, 0.94rem)/1.36 ui-monospace,
-            SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-            "Courier New", monospace;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      tab-size: 2;
-    }}
-    @media (max-width: 28rem) {{
-      body {{ padding: 0.5rem; }}
-      pre {{ padding: 0.7rem; border-radius: 0.2rem; }}
-    }}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Fleet Operations Brief &mdash; {safe_heading}</h1>
-    <p class="refreshed">Page refreshed: {refreshed} &middot; Auto-refreshes every 30 seconds</p>
-    <nav aria-label="Fleet reports">
-{navigation_html}
-    </nav>
-    <pre aria-label="Fleet operations receipt">{safe_report}</pre>
-  </main>
-</body>
-</html>
-"""
 
 
 def _aware_utc(value: datetime) -> datetime:

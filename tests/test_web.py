@@ -57,7 +57,7 @@ def test_main_page_renders_dashboard_from_cache(tmp_path) -> None:
     assert "Holland America" in response.text
     assert "Royal Caribbean" in response.text
     assert "Fleet statistics" in response.text
-    assert "/static/dashboard.css" in response.text
+    assert "/static/css/main.css" in response.text
     assert "/static/dashboard.js" in response.text
 
 
@@ -211,7 +211,10 @@ def test_all_page_includes_royal_caribbean_group(tmp_path) -> None:
     assert response.status_code == 200
     assert "Royal Caribbean Reporting: 1 / 30" in response.text
     assert "ROYAL CARIBBEAN INTERNATIONAL" in response.text
-    assert '<a href="/royal-caribbean">Royal Caribbean</a>' in response.text
+    assert (
+        '<a class="button button-secondary" href="/royal-caribbean">'
+        "Royal Caribbean</a>"
+    ) in response.text
 
 
 def test_existing_hal_and_seabourn_receipt_routes_remain_separate(tmp_path) -> None:
@@ -248,7 +251,10 @@ def test_receipt_navigation_uses_named_fleet_routes(tmp_path) -> None:
     }
 
     for label, path in expected_links.items():
-        assert f'<a href="{path}">{label}</a>' in source_page.text
+        assert re.search(
+            rf'<a class="button button-secondary" href="{path}">{re.escape(label)}</a>',
+            source_page.text,
+        )
 
     combined = client.get(expected_links["HAL + Seabourn"])
     celebrity = client.get(expected_links["Celebrity"])
@@ -343,10 +349,10 @@ def test_dashboard_reads_cache_once_per_request(tmp_path) -> None:
     assert cache.loads == 1
 
 
-def test_static_dashboard_assets_are_served(tmp_path) -> None:
+def test_shared_styles_and_dashboard_assets_are_served(tmp_path) -> None:
     client = _client(PositionCache(tmp_path / "positions.sqlite3"))
 
-    css = client.get("/static/dashboard.css")
+    css = client.get("/static/css/main.css")
     javascript = client.get("/static/dashboard.js")
 
     assert css.status_code == 200
@@ -360,6 +366,79 @@ def test_static_dashboard_assets_are_served(tmp_path) -> None:
     assert "ships.forEach" in javascript.text
     assert "try {" in javascript.text
     assert "map.setView([20, 0], 2)" in javascript.text
+    assert "L.divIcon" in javascript.text
+    assert "L.marker" in javascript.text
+    assert "L.circleMarker" not in javascript.text
+    assert "GENERIC_FLEET_ICON" in javascript.text
+
+
+def test_local_fleet_marker_assets_are_served(tmp_path) -> None:
+    client = _client(PositionCache(tmp_path / "positions.sqlite3"))
+
+    for filename in (
+        "holland-america.png",
+        "seabourn.png",
+        "celebrity.png",
+        "royal-caribbean.png",
+        "generic-ship.png",
+    ):
+        response = client.get(f"/static/img/fleets/{filename}")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+        assert response.content.startswith(b"\x89PNG")
+
+
+def test_map_uses_exact_fleet_identifiers_and_generic_fallback(tmp_path) -> None:
+    javascript = _client(PositionCache(tmp_path / "positions.sqlite3")).get(
+        "/static/dashboard.js"
+    ).text
+
+    expected_mapping = {
+        "Holland America Line": "holland-america.png",
+        "Seabourn": "seabourn.png",
+        "Celebrity Cruises": "celebrity.png",
+        "Royal Caribbean International": "royal-caribbean.png",
+    }
+    for fleet_name, filename in expected_mapping.items():
+        assert fleet_name in javascript
+        assert f"/static/img/fleets/{filename}" in javascript
+    assert "/static/img/fleets/generic-ship.png" in javascript
+    assert 'image.addEventListener(' in javascript
+
+
+def test_every_receipt_route_has_home_button_and_shared_design(tmp_path) -> None:
+    client = _client(PositionCache(tmp_path / "positions.sqlite3"))
+    routes = (
+        "/hal-seabourn",
+        "/hal",
+        "/seabourn",
+        "/celebrity",
+        "/profile/celebrity",
+        "/royal-caribbean",
+        "/profile/royal-caribbean",
+        "/all",
+    )
+
+    for route in routes:
+        response = client.get(route)
+        assert response.status_code == 200
+        assert "← Fleet Tracker Home" in response.text
+        assert 'href="http://testserver/"' in response.text
+        assert "/static/css/main.css" in response.text
+        assert 'class="site-header"' in response.text
+        assert 'class="panel receipt-card"' in response.text
+        assert 'aria-label="Fleet operations receipt"' in response.text
+
+
+def test_all_html_pages_extend_shared_navigation_design(tmp_path) -> None:
+    client = _client(PositionCache(tmp_path / "positions.sqlite3"))
+
+    for route in ("/", "/search?q=not-a-ship", "/ship/koningsdam"):
+        response = client.get(route)
+        assert response.status_code == 200
+        assert 'class="site-header"' in response.text
+        assert "← Fleet Tracker Home" in response.text
+        assert "/static/css/main.css" in response.text
 
 
 def test_embedded_ship_map_data_is_valid_json(tmp_path) -> None:

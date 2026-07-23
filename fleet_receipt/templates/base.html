@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{% block description %}Live cruise fleet positions and operational status.{% endblock %}">
+  {% if refresh_seconds %}<meta http-equiv="refresh" content="{{ refresh_seconds }}">{% endif %}
+  <title>{% block title %}{{ page_title }} · Fleet Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/main.css') }}?v={{ version }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('dashboard_page') }}" aria-label="Fleet Tracker home">
+        <span class="brand-mark" aria-hidden="true">FT</span>
+        <span>
+          <strong>Fleet Tracker</strong>
+          <small>{{ page_subtitle }}</small>
+        </span>
+      </a>
+      <nav class="top-nav" aria-label="Page navigation">
+        <a class="home-link button button-secondary" href="{{ url_for('dashboard_page') }}">← Fleet Tracker Home</a>
+        <span class="page-context">{{ page_title }}</span>
+        <span class="live-indicator"><span aria-hidden="true">●</span> Live</span>
+      </nav>
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <strong>Fleet Tracker</strong>
+        <span>Version {{ version }}</span>
+      </div>
+      <p>
+        Powered by
+        <span>AISStream</span>
+        <span>FastAPI</span>
+        <span>SQLite</span>
+        <span>Cloudflare Tunnel</span>
+      </p>
+    </div>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

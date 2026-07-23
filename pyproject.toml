@@ -28,7 +28,12 @@ fleet-receipt = "fleet_receipt.cli:main"
 include = ["fleet_receipt*"]
 
 [tool.setuptools.package-data]
-fleet_receipt = ["static/*.css", "static/*.js", "templates/*.html"]
+fleet_receipt = [
+    "static/*.js",
+    "static/css/*.css",
+    "static/img/fleets/*.png",
+    "templates/*.html",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

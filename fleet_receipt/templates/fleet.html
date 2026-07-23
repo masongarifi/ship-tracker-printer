@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} · Fleet Tracker{% endblock %}
+
+{% block content %}
+<main class="content-page receipt-page">
+  <section class="receipt-intro" aria-labelledby="receipt-heading">
+    <p class="eyebrow">Live cached AIS report</p>
+    <h1 id="receipt-heading">Fleet Operations Brief</h1>
+    <p class="refreshed">Page refreshed: {{ refreshed_at }} · Auto-refreshes every 30 seconds</p>
+  </section>
+  <nav class="fleet-switcher" aria-label="Fleet reports">
+    {% for label, path in navigation %}
+      <a class="button button-secondary" href="{{ path }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <section class="panel receipt-card">
+    <pre aria-label="Fleet operations receipt">{{ report }}</pre>
+  </section>
+</main>
+{% endblock %}
