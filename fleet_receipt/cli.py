@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     listener.add_argument(
         "--cache",
         type=Path,
-        help="Override the default work/position-cache.json path",
+        help="Override the OS application-data SQLite cache path",
     )
     return parser
 

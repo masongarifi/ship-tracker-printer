@@ -1,8 +1,8 @@
 # Fleet Receipt
 
-Fleet Receipt is an offline-first Python application for producing a readable Holland America Line and Seabourn fleet position report. Its eventual target is an Epson TM-L90 connected to a Raspberry Pi, but Phase 1 deliberately prints exact receipt text only to the terminal.
+Fleet Receipt is an offline-first Python application for producing a readable Holland America Line and Seabourn fleet operations briefing. Its target is an Epson TM-L90 connected to a Raspberry Pi; the safe text backend supports development before printer hardware is connected.
 
-The fleet is configuration, not application code. All 16 requested vessels are in `config/fleet.yaml`. IMO and MMSI values are intentionally `null` until verified information is supplied.
+The fleet is configuration, not application code. All 16 vessels and their IMO/MMSI identifiers are in `config/fleet.yaml`.
 
 ## Phase 1 capabilities
 
@@ -13,11 +13,11 @@ The fleet is configuration, not application code. All 16 requested vessels are i
 - Offline port, region, and coordinate location fallbacks
 - Estimated local time and natural comparison with Seattle
 - Configurable word-safe receipt wrapping
-- Clear stale and unavailable-position output
+- Persistent SQLite position cache with stale and unavailable-position output
 - Live AISstream.io position collection filtered to configured fleet MMSIs
 - Text-only preview that cannot consume paper
 
-SQLite, live MarineTraffic calls, CUPS/ESC-POS printing, systemd, and GPIO are later phases.
+CUPS/ESC-POS printing, systemd, and GPIO are later deployment phases.
 
 ## Continuously cache live AISstream.io data
 
@@ -35,9 +35,32 @@ python -m pip install -e .
 python -m fleet_receipt listen
 ```
 
-It reconnects automatically and atomically updates
-`work/position-cache.json` whenever a configured vessel transmits. Keep this
-process running as a background service on the Raspberry Pi.
+It reconnects automatically and transactionally updates one SQLite row whenever
+a configured vessel transmits. Keep this process running as a background service
+on the Raspberry Pi.
+
+## Persistent cache storage
+
+The cache is deliberately outside the Git checkout and virtual environment.
+Default locations are:
+
+- Raspberry Pi/Linux: `~/.local/share/ship-tracker-printer/ais-cache.sqlite3`
+- Windows: `%LOCALAPPDATA%\ship-tracker-printer\ais-cache.sqlite3`
+- macOS: `~/Library/Application Support/ship-tracker-printer/ais-cache.sqlite3`
+
+Linux honors `XDG_DATA_HOME`. For a deliberate operational override, set
+`SHIP_TRACKER_DATA_DIR` to the directory that should contain the database.
+
+SQLite uses write-ahead logging, full synchronous writes, one transaction per
+AIS update, and one row per vessel. A listener restart loads every existing row
+before connecting to AISstream. Therefore old positions are immediately
+printable and remain available through reboots, editable installs, Git pulls,
+checkout replacement, listener crashes, and unexpected power loss.
+
+On first startup after upgrading from the old implementation, the listener
+automatically imports `work/position-cache.json` into the external SQLite
+database if the database does not already exist. The legacy file is left intact
+as a recovery copy.
 
 The button/print path reads the cache immediately and does not contact
 AISstream.io:
