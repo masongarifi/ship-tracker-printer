@@ -178,10 +178,14 @@ The dashboard is also available through the configured Cloudflare Tunnel at
 `https://fleettracker.masongarifi.com`. Leaflet and OpenStreetMap tiles are
 loaded by the browser; all vessel data is rendered from the local cache.
 
-The current cache stores only each vessel's latest position, not historical
-status transitions. Dashboard fields that require history—longest underway,
-recent departures/arrivals, and recent status changes—display `Unavailable`
-rather than inventing activity.
+The cache records `underway_since` in each vessel's existing JSON position
+payload. It is set when the listener first observes a vessel underway or
+observes a transition from a non-underway status, preserved while subsequent
+reports remain underway, and cleared when the vessel is no longer underway.
+The dashboard's longest-underway value is therefore based on observed AIS
+transitions. It may not be the true voyage start when the listener was offline,
+AIS coverage was lost, or the vessel was already underway when first observed.
+Recent departures, arrivals, and other status history remain unavailable.
 
 To print the Celebrity report from the shared cache:
 

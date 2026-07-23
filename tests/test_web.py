@@ -57,6 +57,12 @@ def test_main_page_renders_dashboard_from_cache(tmp_path) -> None:
     assert "Holland America" in response.text
     assert "Royal Caribbean" in response.text
     assert "Fleet statistics" in response.text
+    assert '<h1 id="overview-heading">Fleet Tracker</h1>' in response.text
+    assert (
+        "A unified view of live vessel positions, voyage status, and fleet operations."
+        in response.text
+    )
+    assert "Displaying 1 vessels currently reporting via AIS." in response.text
     assert "/static/css/main.css" in response.text
     assert "/static/dashboard.js" in response.text
 
@@ -118,7 +124,7 @@ def test_empty_cache_is_served_without_error(tmp_path) -> None:
     health_response = client.get("/health")
 
     assert page_response.status_code == 200
-    assert "ships currently reporting" in page_response.text
+    assert "No vessels are currently reporting via AIS." in page_response.text
     assert "Last AIS update" in page_response.text
     assert "Unavailable" in page_response.text
     assert report_response.status_code == 200

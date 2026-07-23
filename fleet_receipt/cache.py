@@ -3,10 +3,12 @@ import os
 import sqlite3
 import sys
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
+from .ais_status import is_underway_status
 from .config import PROJECT_ROOT
 from .models import Position
 
@@ -70,11 +72,23 @@ class PositionCache:
 
     def update(self, position: Position) -> None:
         vessel_key = position.vessel_name.casefold()
-        payload = json.dumps(
-            _position_to_dict(position), separators=(",", ":"), ensure_ascii=False
-        )
         now = datetime.now().astimezone().isoformat()
         with self._connect() as connection:
+            previous_row = connection.execute(
+                "SELECT payload FROM positions WHERE vessel_key = ?",
+                (vessel_key,),
+            ).fetchone()
+            previous = (
+                _position_from_dict(json.loads(previous_row["payload"]))
+                if previous_row is not None
+                else None
+            )
+            position = _with_underway_since(position, previous)
+            payload = json.dumps(
+                _position_to_dict(position),
+                separators=(",", ":"),
+                ensure_ascii=False,
+            )
             connection.execute(
                 """
                 INSERT INTO positions (vessel_key, payload, cached_at)
@@ -205,6 +219,11 @@ def _position_to_dict(position: Position) -> Dict[str, Any]:
         "position_type": position.position_type,
         "broad_location": position.broad_location,
         "broad_timezone": position.broad_timezone,
+        "underway_since": (
+            position.underway_since.isoformat()
+            if isinstance(position.underway_since, datetime)
+            else None
+        ),
     }
 
 
@@ -223,4 +242,24 @@ def _position_from_dict(row: Dict[str, Any]) -> Position:
         position_type=row.get("position_type"),
         broad_location=row.get("broad_location"),
         broad_timezone=row.get("broad_timezone"),
+        underway_since=_optional_datetime(row.get("underway_since")),
     )
+
+
+def _with_underway_since(
+    position: Position, previous: Optional[Position]
+) -> Position:
+    if not is_underway_status(position.navigational_status):
+        return replace(position, underway_since=None)
+    if previous is None or not is_underway_status(previous.navigational_status):
+        return replace(position, underway_since=position.position_timestamp)
+    return replace(position, underway_since=previous.underway_since)
+
+
+def _optional_datetime(value: Any) -> Optional[datetime]:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None

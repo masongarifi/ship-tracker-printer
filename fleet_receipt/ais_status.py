@@ -35,3 +35,9 @@ def navigational_status(value: Any) -> str:
             )
         return cleaned or "Navigational status unavailable"
     return "Navigational status unavailable"
+
+
+def is_underway_status(value: Any) -> bool:
+    """Return whether a normalized AIS status represents an underway state."""
+    normalized = navigational_status(value)
+    return normalized.casefold().replace(" ", "").startswith("underway")

@@ -16,6 +16,7 @@ def _position(
     speed: float,
     status: str,
     minutes_old: int,
+    underway_since: datetime | str | None = None,
 ) -> Position:
     return Position(
         vessel_name=name,
@@ -28,6 +29,7 @@ def _position(
         reported_eta=None,
         position_timestamp=NOW - timedelta(minutes=minutes_old),
         source="AISstream.io",
+        underway_since=underway_since,  # type: ignore[arg-type]
     )
 
 
@@ -106,3 +108,76 @@ def test_bad_map_position_does_not_block_valid_markers() -> None:
     dashboard = build_dashboard(fleet, positions, NOW)
 
     assert [marker["name"] for marker in dashboard["markers"]] == ["Koningsdam"]
+
+
+def test_longest_underway_chooses_earliest_observed_transition() -> None:
+    fleet = load_fleet(profile="all")
+    positions = {
+        "koningsdam": _position(
+            "Koningsdam",
+            latitude=52,
+            speed=15,
+            status="Under way",
+            minutes_old=2,
+            underway_since=NOW - timedelta(days=2, hours=7),
+        ),
+        "celebrity apex": _position(
+            "Celebrity Apex",
+            latitude=50,
+            speed=17,
+            status="Under way under sailing only",
+            minutes_old=1,
+            underway_since=NOW - timedelta(hours=8),
+        ),
+    }
+
+    dashboard = build_dashboard(fleet, positions, NOW)
+    spotlights = {item["label"]: item["value"] for item in dashboard["spotlights"]}
+
+    assert spotlights["Longest underway"] == "Koningsdam · 2d 7h"
+
+
+def test_longest_underway_ignores_missing_malformed_and_non_underway_values() -> None:
+    fleet = load_fleet(profile="all")
+    positions = {
+        "koningsdam": _position(
+            "Koningsdam",
+            latitude=52,
+            speed=15,
+            status="Under way",
+            minutes_old=2,
+            underway_since="not-a-timestamp",
+        ),
+        "celebrity apex": _position(
+            "Celebrity Apex",
+            latitude=50,
+            speed=0,
+            status="Moored",
+            minutes_old=1,
+            underway_since=NOW - timedelta(days=5),
+        ),
+    }
+
+    dashboard = build_dashboard(fleet, positions, NOW)
+    spotlights = {item["label"]: item["value"] for item in dashboard["spotlights"]}
+
+    assert spotlights["Longest underway"] == "Unavailable"
+
+
+def test_ais_message_age_is_not_used_as_underway_duration() -> None:
+    fleet = load_fleet(profile="all")
+    positions = {
+        "koningsdam": _position(
+            "Koningsdam",
+            latitude=52,
+            speed=15,
+            status="Under way",
+            minutes_old=60 * 24 * 10,
+            underway_since=None,
+        )
+    }
+
+    dashboard = build_dashboard(fleet, positions, NOW)
+    spotlights = {item["label"]: item["value"] for item in dashboard["spotlights"]}
+
+    assert spotlights["Longest underway"] == "Unavailable"

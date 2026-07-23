@@ -28,6 +28,7 @@ class Position:
     position_type: Optional[str] = None
     broad_location: Optional[str] = None
     broad_timezone: Optional[str] = None
+    underway_since: Optional[datetime] = None
 
 
 @dataclass(frozen=True)

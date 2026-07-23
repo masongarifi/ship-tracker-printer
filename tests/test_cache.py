@@ -6,14 +6,14 @@ from fleet_receipt.cache import PositionCache, default_cache_path
 from fleet_receipt.models import Position
 
 
-def make_position(name, latitude, timestamp=None):
+def make_position(name, latitude, timestamp=None, status="Under way"):
     return Position(
         vessel_name=name,
         latitude=latitude,
         longitude=-122.3,
         speed_knots=10.0,
         course_degrees=90.0,
-        navigational_status="Under way",
+        navigational_status=status,
         destination=None,
         reported_eta=None,
         position_timestamp=timestamp
@@ -128,3 +128,88 @@ def test_legacy_repository_json_is_migrated_once(tmp_path):
 
 def test_missing_cache_starts_empty(tmp_path):
     assert PositionCache(tmp_path / "missing.sqlite3").load() == {}
+
+
+def test_non_underway_to_underway_sets_message_timestamp(tmp_path):
+    cache = PositionCache(tmp_path / "ais-cache.sqlite3")
+    moored_at = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    underway_at = datetime(2026, 7, 23, 9, tzinfo=timezone.utc)
+    cache.update(make_position("Eurodam", 47.6, moored_at, "Moored"))
+    cache.update(make_position("Eurodam", 47.7, underway_at, "Under way"))
+
+    assert cache.load()["eurodam"].underway_since == underway_at
+
+
+def test_underway_to_underway_preserves_original_timestamp(tmp_path):
+    cache = PositionCache(tmp_path / "ais-cache.sqlite3")
+    first_observed = datetime(2026, 7, 23, 9, tzinfo=timezone.utc)
+    later_report = datetime(2026, 7, 23, 12, tzinfo=timezone.utc)
+    cache.update(make_position("Eurodam", 47.6, first_observed))
+    cache.update(make_position("Eurodam", 48.2, later_report, "Under way"))
+
+    assert cache.load()["eurodam"].underway_since == first_observed
+
+
+def test_underway_to_moored_clears_timestamp(tmp_path):
+    cache = PositionCache(tmp_path / "ais-cache.sqlite3")
+    cache.update(
+        make_position(
+            "Eurodam",
+            47.6,
+            datetime(2026, 7, 23, 9, tzinfo=timezone.utc),
+        )
+    )
+    cache.update(
+        make_position(
+            "Eurodam",
+            47.7,
+            datetime(2026, 7, 23, 12, tzinfo=timezone.utc),
+            "Moored",
+        )
+    )
+
+    assert cache.load()["eurodam"].underway_since is None
+
+
+def test_first_seen_underway_uses_first_observed_message_timestamp(tmp_path):
+    cache = PositionCache(tmp_path / "ais-cache.sqlite3")
+    observed_at = datetime(2026, 7, 23, 9, 15, tzinfo=timezone.utc)
+    cache.update(make_position("Eurodam", 47.6, observed_at))
+
+    assert cache.load()["eurodam"].underway_since == observed_at
+
+
+def test_underway_since_survives_json_serialization_and_restart(tmp_path):
+    path = tmp_path / "ais-cache.sqlite3"
+    observed_at = datetime(2026, 7, 23, 9, 15, tzinfo=timezone.utc)
+    PositionCache(path).update(make_position("Eurodam", 47.6, observed_at))
+
+    with sqlite3.connect(path) as connection:
+        payload = json.loads(
+            connection.execute(
+                "SELECT payload FROM positions WHERE vessel_key = 'eurodam'"
+            ).fetchone()[0]
+        )
+    restarted = PositionCache(path)
+
+    assert payload["underway_since"] == observed_at.isoformat()
+    assert restarted.load()["eurodam"].underway_since == observed_at
+
+
+def test_malformed_underway_since_deserializes_as_missing(tmp_path):
+    path = tmp_path / "ais-cache.sqlite3"
+    cache = PositionCache(path)
+    cache.update(make_position("Eurodam", 47.6))
+    with sqlite3.connect(path) as connection:
+        payload = json.loads(
+            connection.execute(
+                "SELECT payload FROM positions WHERE vessel_key = 'eurodam'"
+            ).fetchone()[0]
+        )
+        payload["underway_since"] = "not-a-timestamp"
+        connection.execute(
+            "UPDATE positions SET payload = ? WHERE vessel_key = 'eurodam'",
+            (json.dumps(payload),),
+        )
+
+    assert PositionCache(path).load()["eurodam"].underway_since is None

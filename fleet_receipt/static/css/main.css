@@ -176,6 +176,12 @@ h2 {
   line-height: 1.65;
 }
 
+.reporting-count {
+  margin-top: 0.45rem;
+  color: var(--navy-700);
+  font-weight: 700;
+}
+
 .search {
   width: min(100%, 27rem);
   display: flex;

@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timezone
 from typing import Dict, Iterable, Optional
 
-from .ais_status import navigational_status
+from .ais_status import is_underway_status, navigational_status
 from .formatting_helpers import format_destination, format_eta, format_position_age
 from .locations import format_coordinates
 from .models import FleetData, Position, Vessel
@@ -98,7 +98,7 @@ def build_dashboard(
                 "value": _age(newest, generated_at),
             },
         ),
-        "spotlights": _spotlights(known_positions),
+        "spotlights": _spotlights(known_positions, generated_at),
         "recent_changes": (),
         "cached_ship_count": len(known_positions),
     }
@@ -190,7 +190,9 @@ def _marker(vessel: Vessel, position: Position) -> Dict[str, object]:
     }
 
 
-def _spotlights(positions: Dict[str, Position]) -> tuple[Dict[str, str], ...]:
+def _spotlights(
+    positions: Dict[str, Position], generated_at: datetime
+) -> tuple[Dict[str, str], ...]:
     available = list(positions.values())
     fastest = max(
         (
@@ -204,6 +206,7 @@ def _spotlights(positions: Dict[str, Position]) -> tuple[Dict[str, str], ...]:
     )
     northern = max(available, key=lambda position: position.latitude, default=None)
     southern = min(available, key=lambda position: position.latitude, default=None)
+    longest_underway = _longest_underway(available, generated_at)
     return (
         {
             "label": "Fastest ship",
@@ -221,7 +224,7 @@ def _spotlights(positions: Dict[str, Position]) -> tuple[Dict[str, str], ...]:
             "label": "Southernmost ship",
             "value": southern.vessel_name if southern else "Unavailable",
         },
-        {"label": "Longest underway", "value": "Unavailable"},
+        {"label": "Longest underway", "value": longest_underway},
         {"label": "Most recent departure", "value": "Unavailable"},
         {"label": "Most recent arrival", "value": "Unavailable"},
     )
@@ -233,8 +236,7 @@ def _status(position: Position) -> str:
 
 
 def _is_underway(position: Position) -> bool:
-    normalized = navigational_status(position.navigational_status)
-    return normalized.casefold().replace(" ", "").startswith("underway")
+    return is_underway_status(position.navigational_status)
 
 
 def _is_moored(position: Position) -> bool:
@@ -270,3 +272,38 @@ def _age(value: Optional[datetime], generated_at: datetime) -> str:
     aware = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
     age, _ = format_position_age(aware, generated_at, float("inf"))
     return f"{age} ago"
+
+
+def _longest_underway(
+    positions: Iterable[Position], generated_at: datetime
+) -> str:
+    now = _aware_utc(generated_at)
+    candidates = []
+    for position in positions:
+        started = position.underway_since
+        if not _is_underway(position) or not isinstance(started, datetime):
+            continue
+        started_utc = _aware_utc(started)
+        if started_utc > now:
+            continue
+        candidates.append((now - started_utc, position.vessel_name))
+    if not candidates:
+        return "Unavailable"
+    duration, vessel_name = max(candidates, key=lambda candidate: candidate[0])
+    return f"{vessel_name} · {_format_underway_duration(duration)}"
+
+
+def _aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _format_underway_duration(duration) -> str:
+    total_hours = max(0, int(duration.total_seconds() // 3600))
+    days, hours = divmod(total_hours, 24)
+    if days:
+        return f"{days}d {hours}h"
+    if hours:
+        return f"{hours}h"
+    return "<1h"

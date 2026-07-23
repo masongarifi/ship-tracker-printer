@@ -13,9 +13,17 @@
   <section class="hero" aria-labelledby="overview-heading">
     <div>
       <p class="eyebrow">Maritime operations overview</p>
-      <h1 id="overview-heading">Every fleet. One clear view.</h1>
-      <p class="hero-copy">Latest available AIS positions for {{ dashboard.cached_ship_count }}
-        ships currently reporting across four cruise fleets.</p>
+      <h1 id="overview-heading">Fleet Tracker</h1>
+      <p class="hero-copy">
+        A unified view of live vessel positions, voyage status, and fleet operations.
+      </p>
+      <p class="hero-copy reporting-count">
+        {% if dashboard.cached_ship_count %}
+          Displaying {{ dashboard.cached_ship_count }} vessels currently reporting via AIS.
+        {% else %}
+          No vessels are currently reporting via AIS.
+        {% endif %}
+      </p>
     </div>
     <form class="search" action="{{ url_for('search_page') }}" method="get" role="search">
       <label class="sr-only" for="fleet-search">Search ships</label>
