@@ -387,5 +387,7 @@ def test_leaflet_assets_load_before_dashboard_initialization(tmp_path) -> None:
     dashboard_js = response.text.index("/static/dashboard.js")
 
     assert leaflet_css < leaflet_js < dashboard_js
-    assert 'crossorigin=""\n    defer' in response.text
+    leaflet_imports = response.text[leaflet_css - 100 : dashboard_js]
+    assert "integrity=" not in leaflet_imports
+    assert "crossorigin=" not in leaflet_imports
     assert "/static/dashboard.js?v=0.1.0" in response.text
