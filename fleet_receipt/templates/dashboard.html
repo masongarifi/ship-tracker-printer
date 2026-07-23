@@ -52,10 +52,12 @@
           <span class="fleet-logo" aria-hidden="true">{{ fleet.mark }}</span>
           <span class="fleet-card-title">{{ fleet.name }}</span>
           <span class="fleet-count">{{ fleet.total }} ships</span>
-          <span class="fleet-metrics"><span><strong>{{ fleet.reporting }}</strong> reporting</span>
-            <span><strong>{{ fleet.underway }}</strong> underway</span>
-            <span><strong>{{ fleet.moored }}</strong> moored/anchored</span>
-            <span><strong>{{ fleet.unavailable }}</strong> unavailable</span></span>
+          <span class="fleet-metrics">
+            <span class="fleet-metric fleet-metric--reporting"><strong>{{ fleet.reporting }}</strong> Reporting</span>
+            <span class="fleet-metric fleet-metric--unavailable"><strong>{{ fleet.unavailable }}</strong> Unavailable</span>
+            <span class="fleet-metric fleet-metric--underway"><strong>{{ fleet.underway }}</strong> Underway</span>
+            <span class="fleet-metric fleet-metric--moored"><strong>{{ fleet.moored }}</strong> Moored / Anchored</span>
+          </span>
           <span class="card-action button">View Fleet <span aria-hidden="true">→</span></span>
         </a>
       {% endfor %}
