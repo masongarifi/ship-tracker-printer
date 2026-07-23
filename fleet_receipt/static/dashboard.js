@@ -1,13 +1,11 @@
 (() => {
   "use strict";
 
-  const GENERIC_FLEET_ICON = "/static/img/fleets/generic-ship.png";
-  const FLEET_ICONS = Object.freeze({
-    "Holland America Line": "/static/img/fleets/holland-america.png",
-    Seabourn: "/static/img/fleets/seabourn.png",
-    "Celebrity Cruises": "/static/img/fleets/celebrity.png",
-    "Royal Caribbean International":
-      "/static/img/fleets/royal-caribbean.png",
+  const FLEET_MARKERS = Object.freeze({
+    "Holland America Line": "🚢",
+    Seabourn: "⚓",
+    "Celebrity Cruises": "🌊",
+    "Royal Caribbean International": "🛳️",
   });
 
   document.addEventListener("DOMContentLoaded", initializeFleetMap, { once: true });
@@ -103,38 +101,20 @@
       icon: fleetIcon(ship.fleet),
       riseOnHover: true,
     });
-    marker.on("add", () => installIconFallback(marker));
     marker.bindPopup(popupContent(ship));
     marker.addTo(map);
     bounds.push([latitude, longitude]);
   }
 
   function fleetIcon(fleet) {
-    const iconPath = FLEET_ICONS[String(fleet)] || GENERIC_FLEET_ICON;
+    const emoji = FLEET_MARKERS[String(fleet)] || "🚢";
     return window.L.divIcon({
       className: "fleet-map-marker",
-      html: `<img src="${iconPath}" alt="" width="26" height="26">`,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17],
-      popupAnchor: [0, -19],
+      html: `<span aria-hidden="true">${emoji}</span>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -17],
     });
-  }
-
-  function installIconFallback(marker) {
-    const image = marker.getElement()?.querySelector("img");
-    if (!image || image.dataset.fallbackInstalled === "true") {
-      return;
-    }
-    image.dataset.fallbackInstalled = "true";
-    image.addEventListener(
-      "error",
-      () => {
-        if (!image.src.endsWith(GENERIC_FLEET_ICON)) {
-          image.src = GENERIC_FLEET_ICON;
-        }
-      },
-      { once: true },
-    );
   }
 
   function setInitialView(map, bounds) {

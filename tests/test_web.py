@@ -369,41 +369,26 @@ def test_shared_styles_and_dashboard_assets_are_served(tmp_path) -> None:
     assert "L.divIcon" in javascript.text
     assert "L.marker" in javascript.text
     assert "L.circleMarker" not in javascript.text
-    assert "GENERIC_FLEET_ICON" in javascript.text
+    assert "iconSize: [30, 30]" in javascript.text
 
 
-def test_local_fleet_marker_assets_are_served(tmp_path) -> None:
-    client = _client(PositionCache(tmp_path / "positions.sqlite3"))
-
-    for filename in (
-        "holland-america.png",
-        "seabourn.png",
-        "celebrity.png",
-        "royal-caribbean.png",
-        "generic-ship.png",
-    ):
-        response = client.get(f"/static/img/fleets/{filename}")
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "image/png"
-        assert response.content.startswith(b"\x89PNG")
-
-
-def test_map_uses_exact_fleet_identifiers_and_generic_fallback(tmp_path) -> None:
+def test_map_uses_exact_fleet_identifiers_and_emoji_fallback(tmp_path) -> None:
     javascript = _client(PositionCache(tmp_path / "positions.sqlite3")).get(
         "/static/dashboard.js"
     ).text
 
     expected_mapping = {
-        "Holland America Line": "holland-america.png",
-        "Seabourn": "seabourn.png",
-        "Celebrity Cruises": "celebrity.png",
-        "Royal Caribbean International": "royal-caribbean.png",
+        "Holland America Line": "🚢",
+        "Seabourn": "⚓",
+        "Celebrity Cruises": "🌊",
+        "Royal Caribbean International": "🛳️",
     }
-    for fleet_name, filename in expected_mapping.items():
+    for fleet_name, emoji in expected_mapping.items():
         assert fleet_name in javascript
-        assert f"/static/img/fleets/{filename}" in javascript
-    assert "/static/img/fleets/generic-ship.png" in javascript
-    assert 'image.addEventListener(' in javascript
+        assert emoji in javascript
+    assert '|| "🚢"' in javascript
+    assert "/static/img/fleets/" not in javascript
+    assert "<img" not in javascript
 
 
 def test_every_receipt_route_has_home_button_and_shared_design(tmp_path) -> None:

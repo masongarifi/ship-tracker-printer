@@ -31,7 +31,6 @@ include = ["fleet_receipt*"]
 fleet_receipt = [
     "static/*.js",
     "static/css/*.css",
-    "static/img/fleets/*.png",
     "templates/*.html",
 ]
 

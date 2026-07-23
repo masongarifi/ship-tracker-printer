@@ -352,19 +352,18 @@ h2 {
 .fleet-map-marker {
   display: grid;
   place-items: center;
-  overflow: hidden;
   border: 1px solid #6f8493;
   border-radius: 50%;
   background: var(--white);
   box-shadow: 0 2px 7px rgb(7 27 45 / 28%);
 }
 
-.fleet-map-marker img {
-  width: 26px;
-  height: 26px;
+.fleet-map-marker span {
   display: block;
-  border-radius: 50%;
-  object-fit: contain;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+    sans-serif;
+  font-size: 17px;
+  line-height: 1;
 }
 
 .fleet-grid {
