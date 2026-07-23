@@ -5,6 +5,10 @@ from typing import Any, Dict
 from .models import FleetData, Vessel
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROFILE_LINE_ALIASES = {
+    "hal": {"Holland America Line"},
+    "seabourn": {"Seabourn"},
+}
 
 
 class ConfigurationError(ValueError):
@@ -44,7 +48,12 @@ def load_fleet(
         line_name = str(line["name"]).strip()
         line_profile = str(line.get("profile") or "main").strip().casefold()
         configured_profiles.add(line_profile)
-        if selected_profile != "all" and line_profile != selected_profile:
+        alias_lines = PROFILE_LINE_ALIASES.get(selected_profile)
+        if (
+            selected_profile != "all"
+            and line_profile != selected_profile
+            and (alias_lines is None or line_name not in alias_lines)
+        ):
             continue
         order.append(line_name)
         line_mmsis = set()
@@ -79,7 +88,11 @@ def load_fleet(
                     notes=item.get("notes"),
                 )
             )
-    if selected_profile != "all" and selected_profile not in configured_profiles:
+    if (
+        selected_profile != "all"
+        and selected_profile not in configured_profiles
+        and selected_profile not in PROFILE_LINE_ALIASES
+    ):
         raise ConfigurationError(f"Unknown fleet profile: {profile}")
     return FleetData(tuple(order), tuple(vessels))
 

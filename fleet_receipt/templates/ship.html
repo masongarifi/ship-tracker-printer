@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ ship.name }} · Fleet Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">FT</span>
+        <span><strong>Fleet Tracker</strong><small>Vessel Details</small></span>
+      </a>
+      <span class="live-indicator"><span aria-hidden="true">●</span> Live</span>
+    </div>
+  </header>
+  <main class="content-page">
+    <a class="back-link" href="/">← Dashboard</a>
+    <section class="panel ship-panel">
+      <p class="eyebrow">{{ ship.fleet }}</p>
+      <h1>{{ ship.name }}</h1>
+      <div class="identity-row">
+        <span>IMO <strong>{{ ship.imo }}</strong></span>
+        <span>MMSI <strong>{{ ship.mmsi }}</strong></span>
+      </div>
+      {% if ship.position_available %}
+        <dl class="detail-grid">
+          <div><dt>Status</dt><dd>{{ ship.status }}</dd></div>
+          <div><dt>Speed</dt><dd>{{ ship.speed }}</dd></div>
+          <div><dt>Course</dt><dd>{{ ship.course }}</dd></div>
+          <div><dt>Coordinates</dt><dd>{{ ship.coordinates }}</dd></div>
+          <div><dt>Destination</dt><dd>{{ ship.destination }}</dd></div>
+          <div><dt>ETA</dt><dd>{{ ship.eta }}</dd></div>
+          <div><dt>Last AIS update</dt><dd>{{ ship.updated }}</dd></div>
+        </dl>
+      {% else %}
+        <div class="unavailable">
+          <strong>Position unavailable</strong>
+          <p>No cached AIS position has been received for this vessel.</p>
+        </div>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

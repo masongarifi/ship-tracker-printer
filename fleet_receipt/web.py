@@ -1,15 +1,30 @@
 import html
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, Optional
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
+from . import __version__
 from .cache import PositionCache
 from .config import ConfigurationError
+from .config import load_fleet
+from .dashboard import (
+    build_dashboard,
+    build_ship_detail,
+    exact_vessel_match,
+    search_vessels,
+    vessel_for_slug,
+    vessel_slug,
+)
 from .reporting import render_cached_report
 
 REFRESH_SECONDS = 30
+PACKAGE_ROOT = Path(__file__).resolve().parent
+TEMPLATES = Jinja2Templates(directory=PACKAGE_ROOT / "templates")
 
 
 def create_app(
@@ -24,6 +39,11 @@ def create_app(
         redoc_url=None,
         openapi_url=None,
     )
+    app.mount(
+        "/static",
+        StaticFiles(directory=PACKAGE_ROOT / "static"),
+        name="static",
+    )
 
     def profile_page(fleet_profile: str, heading: str):
         refreshed_at = _aware_utc(clock())
@@ -34,8 +54,27 @@ def create_app(
         )
 
     @app.get("/", response_class=HTMLResponse)
-    def receipt_page():
-        return profile_page("main", "HAL + Seabourn")
+    def dashboard_page(request: Request):
+        generated_at = _aware_utc(clock())
+        dashboard = build_dashboard(
+            load_fleet(profile="all"),
+            active_cache.load(),
+            generated_at,
+        )
+        return TEMPLATES.TemplateResponse(
+            request=request,
+            name="dashboard.html",
+            context={"dashboard": dashboard, "version": __version__},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/hal", response_class=HTMLResponse)
+    def hal_page():
+        return profile_page("hal", "Holland America")
+
+    @app.get("/seabourn", response_class=HTMLResponse)
+    def seabourn_page():
+        return profile_page("seabourn", "Seabourn")
 
     @app.get("/celebrity", response_class=HTMLResponse)
     def celebrity_page():
@@ -56,6 +95,47 @@ def create_app(
     @app.get("/all", response_class=HTMLResponse)
     def all_fleets_page():
         return profile_page("all", "All Fleets")
+
+    @app.get("/search", response_class=HTMLResponse)
+    def search_page(request: Request, q: str = ""):
+        fleet = load_fleet(profile="all")
+        results = search_vessels(fleet, q)
+        exact = exact_vessel_match(results, q)
+        if exact is not None:
+            return RedirectResponse(f"/ship/{vessel_slug(exact.name)}", status_code=303)
+        return TEMPLATES.TemplateResponse(
+            request=request,
+            name="search.html",
+            context={
+                "query": q,
+                "results": [
+                    {
+                        "name": vessel.name,
+                        "fleet": vessel.cruise_line,
+                        "imo": vessel.imo or "Unavailable",
+                        "mmsi": vessel.mmsi or "Unavailable",
+                        "slug": vessel_slug(vessel.name),
+                    }
+                    for vessel in results
+                ],
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/ship/{slug}", response_class=HTMLResponse)
+    def ship_page(request: Request, slug: str):
+        fleet = load_fleet(profile="all")
+        vessel = vessel_for_slug(fleet, slug)
+        if vessel is None:
+            raise HTTPException(status_code=404, detail="Ship not found")
+        position = active_cache.load().get(vessel.name.casefold())
+        ship = build_ship_detail(vessel, position, _aware_utc(clock()))
+        return TEMPLATES.TemplateResponse(
+            request=request,
+            name="ship.html",
+            context={"ship": ship},
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/api/report", response_class=PlainTextResponse)
     def report_text(fleet: str = "main"):

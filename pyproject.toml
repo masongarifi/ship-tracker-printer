@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.139,<1",
+    "Jinja2>=3.1,<4",
     "PyYAML>=6.0",
     "tzdata>=2025.2",
     "uvicorn>=0.51,<1",
@@ -25,6 +26,9 @@ fleet-receipt = "fleet_receipt.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["fleet_receipt*"]
+
+[tool.setuptools.package-data]
+fleet_receipt = ["static/*.css", "static/*.js", "templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

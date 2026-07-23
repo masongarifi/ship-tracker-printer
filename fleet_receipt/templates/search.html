@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ship Search · Fleet Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">FT</span>
+        <span><strong>Fleet Tracker</strong><small>Ship Search</small></span>
+      </a>
+      <span class="live-indicator"><span aria-hidden="true">●</span> Live</span>
+    </div>
+  </header>
+  <main class="content-page">
+    <a class="back-link" href="/">← Dashboard</a>
+    <section class="panel results-panel">
+      <p class="eyebrow">Fleet directory</p>
+      <h1>Search results</h1>
+      <form class="search page-search" action="/search" method="get" role="search">
+        <label class="sr-only" for="results-search">Search ships</label>
+        <input id="results-search" name="q" type="search" value="{{ query }}"
+               placeholder="Search ship name, IMO, or MMSI" required>
+        <button type="submit">Search</button>
+      </form>
+      {% if results %}
+        <div class="result-list">
+          {% for vessel in results %}
+            <a href="/ship/{{ vessel.slug }}">
+              <span><strong>{{ vessel.name }}</strong><small>{{ vessel.fleet }}</small></span>
+              <span><small>IMO {{ vessel.imo }} · MMSI {{ vessel.mmsi }}</small>→</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="unavailable">
+          <strong>No ships found</strong>
+          <p>Try a full or partial ship name, IMO, or MMSI.</p>
+        </div>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

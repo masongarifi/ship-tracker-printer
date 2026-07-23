@@ -148,26 +148,39 @@ http://raspberrypi.local:8000/
 http://YOUR_PI_IP_ADDRESS:8000/
 ```
 
-The page uses the same renderer and persistent SQLite cache as
+The homepage is a responsive maritime operations dashboard built directly from
+the persistent SQLite cache. It includes fleet summary cards, an interactive
+Leaflet/OpenStreetMap world map, fleet statistics, cache-derived spotlights,
+and ship search by name, IMO, or MMSI. It never contacts an AIS provider.
+
+The fleet-specific pages continue using the same narrow receipt renderer as
 `fleet-receipt preview --cached`, so cached positions appear immediately even
 when the listener is restarting or AISstream.io is temporarily disconnected.
-It preserves the narrow receipt layout and automatically refreshes every 30
-seconds.
+Those receipt pages automatically refresh every 30 seconds.
 
 Available routes:
 
-- `/` — the existing combined Holland America and Seabourn report
+- `/` — Fleet Tracker dashboard
+- `/hal` — Holland America receipt report
+- `/seabourn` — Seabourn receipt report
 - `/celebrity` — Celebrity Cruises report
 - `/profile/celebrity` — alternate Celebrity Cruises route
 - `/royal-caribbean` — Royal Caribbean International report
 - `/profile/royal-caribbean` — alternate Royal Caribbean route
 - `/all` — every configured fleet, grouped by cruise line
+- `/search?q=...` — ship search by name, IMO, or MMSI
+- `/ship/{ship-name}` — cached vessel details
 - `/api/report` — the same rendered report as UTF-8 plain text
 - `/health` — cache availability, vessel count, and newest AIS update age
 
-The page navigation links switch among HAL + Seabourn, Celebrity, Royal
-Caribbean, and all fleets. Each view uses the same receipt renderer and
-refreshes automatically.
+The dashboard is also available through the configured Cloudflare Tunnel at
+`https://fleettracker.masongarifi.com`. Leaflet and OpenStreetMap tiles are
+loaded by the browser; all vessel data is rendered from the local cache.
+
+The current cache stores only each vessel's latest position, not historical
+status transitions. Dashboard fields that require history—longest underway,
+recent departures/arrivals, and recent status changes—display `Unavailable`
+rather than inventing activity.
 
 To print the Celebrity report from the shared cache:
 

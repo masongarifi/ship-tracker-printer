@@ -1,6 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from html import escape
-
 from fastapi.testclient import TestClient
 
 from fleet_receipt.cache import PositionCache
@@ -44,20 +42,21 @@ def test_web_cli_defaults() -> None:
     assert args.port == 8000
 
 
-def test_main_page_renders_receipt(tmp_path) -> None:
+def test_main_page_renders_dashboard_from_cache(tmp_path) -> None:
     cache = PositionCache(tmp_path / "positions.sqlite3")
     cache.update(_position())
-    expected = render_cached_report(cache, generated_at=NOW)
 
     response = _client(cache).get("/")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "<title>Fleet Operations Brief</title>" in response.text
-    assert '<meta http-equiv="refresh" content="30">' in response.text
-    assert "<pre" in response.text
-    assert "Page refreshed:" in response.text
-    assert escape(expected) in response.text
+    assert "<title>Fleet Tracker · Live Cruise Fleet Dashboard</title>" in response.text
+    assert 'id="fleet-map"' in response.text
+    assert "Holland America" in response.text
+    assert "Royal Caribbean" in response.text
+    assert "Fleet statistics" in response.text
+    assert "/static/dashboard.css" in response.text
+    assert "/static/dashboard.js" in response.text
 
 
 def test_web_uses_positions_from_persistent_cache(tmp_path) -> None:
@@ -69,8 +68,9 @@ def test_web_uses_positions_from_persistent_cache(tmp_path) -> None:
     response = _client(restarted_process_cache).get("/")
 
     assert response.status_code == 200
-    assert "KONINGSDAM" in response.text
-    assert "52°00.0&#x27;N 003°30.0&#x27;E" in response.text
+    assert "Koningsdam" in response.text
+    assert '"latitude": 52.0' in response.text
+    assert '"longitude": 3.5' in response.text
 
 
 def test_plain_text_report_matches_shared_renderer(tmp_path) -> None:
@@ -116,7 +116,9 @@ def test_empty_cache_is_served_without_error(tmp_path) -> None:
     health_response = client.get("/health")
 
     assert page_response.status_code == 200
-    assert "NO RECENT AIS" in page_response.text
+    assert "ships currently reporting" in page_response.text
+    assert "Last AIS update" in page_response.text
+    assert "Unavailable" in page_response.text
     assert report_response.status_code == 200
     assert "NO RECENT AIS" in report_response.text
     assert health_response.json() == {
@@ -135,9 +137,9 @@ def test_vessel_data_is_html_escaped(tmp_path) -> None:
     response = _client(cache).get("/")
 
     assert response.status_code == 200
-    assert "<script" not in response.text.casefold()
-    assert "&lt;script" in response.text.casefold()
-    assert "&lt;/script&gt;" in response.text.casefold()
+    assert "<script>alert(1)</script>" not in response.text.casefold()
+    assert "\\u003cscript" in response.text.casefold()
+    assert "\\u003c/script\\u003e" in response.text.casefold()
     assert "AISSTREAM_API_KEY" not in response.text
     assert str(cache.path) not in response.text
 
@@ -157,16 +159,16 @@ def test_celebrity_routes_render_only_celebrity_report(tmp_path) -> None:
         assert '<meta http-equiv="refresh" content="30">' in response.text
 
 
-def test_main_page_links_to_celebrity_without_changing_default_report(tmp_path) -> None:
+def test_main_page_links_to_celebrity_card(tmp_path) -> None:
     cache = PositionCache(tmp_path / "positions.sqlite3")
     cache.update(_position(vessel_name="Celebrity Apex"))
 
     response = _client(cache).get("/")
 
     assert response.status_code == 200
-    assert '<a href="/celebrity">Celebrity</a>' in response.text
+    assert 'href="/celebrity"' in response.text
     assert "Celebrity Reporting:" not in response.text
-    assert "CELEBRITY APEX" not in response.text
+    assert "Celebrity Apex" in response.text
 
 
 def test_all_page_groups_main_and_celebrity_fleets(tmp_path) -> None:
@@ -208,3 +210,101 @@ def test_all_page_includes_royal_caribbean_group(tmp_path) -> None:
     assert "Royal Caribbean Reporting: 1 / 30" in response.text
     assert "ROYAL CARIBBEAN INTERNATIONAL" in response.text
     assert '<a href="/royal-caribbean">Royal Caribbean</a>' in response.text
+
+
+def test_existing_hal_and_seabourn_receipt_routes_remain_separate(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam"))
+    cache.update(_position(vessel_name="Seabourn Quest"))
+    client = _client(cache)
+
+    hal = client.get("/hal")
+    seabourn = client.get("/seabourn")
+
+    assert hal.status_code == 200
+    assert "HAL Reporting: 1 / 11" in hal.text
+    assert "KONINGSDAM" in hal.text
+    assert "SEABOURN QUEST" not in hal.text
+    assert seabourn.status_code == 200
+    assert "Seabourn Reporting: 1 / 5" in seabourn.text
+    assert "SEABOURN QUEST" in seabourn.text
+    assert "KONINGSDAM" not in seabourn.text
+
+
+def test_dashboard_map_contains_required_cached_ship_fields(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam", destination="NL RTM"))
+
+    response = _client(cache).get("/")
+
+    assert response.status_code == 200
+    for field in (
+        '"name": "Koningsdam"',
+        '"fleet": "Holland America Line"',
+        '"status": "Underway"',
+        '"speed": "15.2 kt"',
+        '"course": "087',
+        '"destination": "Rotterdam, Netherlands"',
+        '"eta": "Unavailable"',
+        '"details_url": "/ship/koningsdam"',
+    ):
+        assert field in response.text
+
+
+def test_search_redirects_exact_identifier_and_lists_partial_matches(tmp_path) -> None:
+    client = _client(PositionCache(tmp_path / "positions.sqlite3"))
+
+    exact = client.get("/search?q=9692557", follow_redirects=False)
+    partial = client.get("/search?q=Celebrity", follow_redirects=False)
+
+    assert exact.status_code == 303
+    assert exact.headers["location"] == "/ship/koningsdam"
+    assert partial.status_code == 200
+    assert "Celebrity Apex" in partial.text
+    assert "Celebrity Xcel" in partial.text
+
+
+def test_ship_detail_page_uses_cached_position(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam"))
+
+    response = _client(cache).get("/ship/koningsdam")
+
+    assert response.status_code == 200
+    assert "<h1>Koningsdam</h1>" in response.text
+    assert "IMO" in response.text
+    assert "9692557" in response.text
+    assert "15.2 kt" in response.text
+    assert "Last AIS update" in response.text
+
+
+def test_dashboard_reads_cache_once_per_request(tmp_path) -> None:
+    underlying = PositionCache(tmp_path / "positions.sqlite3")
+    underlying.update(_position())
+
+    class CountingCache:
+        def __init__(self):
+            self.loads = 0
+
+        def load(self):
+            self.loads += 1
+            return underlying.load()
+
+    cache = CountingCache()
+    response = TestClient(create_app(cache=cache, now_factory=lambda: NOW)).get("/")
+
+    assert response.status_code == 200
+    assert cache.loads == 1
+
+
+def test_static_dashboard_assets_are_served(tmp_path) -> None:
+    client = _client(PositionCache(tmp_path / "positions.sqlite3"))
+
+    css = client.get("/static/dashboard.css")
+    javascript = client.get("/static/dashboard.js")
+
+    assert css.status_code == 200
+    assert "--navy-950" in css.text
+    assert javascript.status_code == 200
+    assert "setInterval" not in javascript.text
+    assert "fetch(" not in javascript.text
