@@ -1,10 +1,18 @@
 from datetime import datetime, timedelta, timezone
+import json
+
+import pytest
 
 from fleet_receipt import cli
 from fleet_receipt.cache import PositionCache
-from fleet_receipt.config import load_fleet
+from fleet_receipt.config import ConfigurationError, load_fleet
 from fleet_receipt.models import Position, Vessel
-from fleet_receipt.providers.aisstream import AISStreamProvider, build_subscription
+from fleet_receipt.providers.aisstream import (
+    AISStreamError,
+    AISStreamProvider,
+    build_subscription,
+    subscription_window,
+)
 from fleet_receipt.reporting import render_cached_report
 
 
@@ -25,6 +33,38 @@ CELEBRITY_MMSIS = {
     "249409000",
     "249047000",
     "249457000",
+}
+ROYAL_CARIBBEAN_MMSIS = {
+    "311263000",
+    "311020700",
+    "311000274",
+    "311361000",
+    "311733000",
+    "311316000",
+    "309906000",
+    "311315000",
+    "311000396",
+    "311001178",
+    "309374000",
+    "311583000",
+    "311001716",
+    "309436000",
+    "311493000",
+    "311478000",
+    "311020600",
+    "311000912",
+    "311000397",
+    "311000267",
+    "311319000",
+    "311805000",
+    "311492000",
+    "311000749",
+    "311001551",
+    "311000660",
+    "311001259",
+    "311321000",
+    "311317000",
+    "311001033",
 }
 
 
@@ -60,12 +100,17 @@ def test_all_configured_mmsis_are_in_one_listener_subscription() -> None:
     fleet = load_fleet(profile="all")
     mmsis = [vessel.mmsi for vessel in fleet.vessels if vessel.active and vessel.mmsi]
 
-    subscription = build_subscription("secret", mmsis)
+    first_window = subscription_window(mmsis)
+    second_window = subscription_window(mmsis, len(mmsis) - 50)
 
-    assert len(subscription["FiltersShipMMSI"]) == 31
-    assert CELEBRITY_MMSIS <= set(subscription["FiltersShipMMSI"])
-    assert "245206000" in subscription["FiltersShipMMSI"]
-    assert "311000464" in subscription["FiltersShipMMSI"]
+    assert len(mmsis) == 61
+    assert len(first_window) == 50
+    assert len(second_window) == 50
+    assert set(mmsis) == set(first_window) | set(second_window)
+    assert CELEBRITY_MMSIS <= set(mmsis)
+    assert ROYAL_CARIBBEAN_MMSIS <= set(mmsis)
+    with pytest.raises(AISStreamError, match="at most 50"):
+        build_subscription("secret", mmsis)
 
 
 def test_listener_deduplicates_mmsis_across_fleets(monkeypatch) -> None:
@@ -110,7 +155,8 @@ def test_listener_loads_every_profile(monkeypatch, tmp_path) -> None:
 
     assert cli.main(["listen"]) == 130
     assert CELEBRITY_MMSIS <= received_mmsis
-    assert len(received_mmsis) == 31
+    assert ROYAL_CARIBBEAN_MMSIS <= received_mmsis
+    assert len(received_mmsis) == 61
 
 
 def test_celebrity_cached_preview_filters_shared_cache(tmp_path, monkeypatch) -> None:
@@ -165,8 +211,129 @@ def test_all_report_groups_every_configured_fleet(tmp_path) -> None:
     assert "HAL Reporting: 0 / 11" in report
     assert "Seabourn Reporting: 0 / 5" in report
     assert "Celebrity Reporting: 0 / 15" in report
+    assert "Royal Caribbean Reporting: 0 / 30" in report
     assert "HOLLAND AMERICA LINE" in report
     assert "SEABOURN" in report
     assert "CELEBRITY CRUISES" in report
+    assert "ROYAL CARIBBEAN INTERNATIONAL" in report
     assert report.index("EURODAM") < report.index("SEABOURN ENCORE")
     assert report.index("SEABOURN ENCORE") < report.index("CELEBRITY APEX")
+    assert report.index("CELEBRITY APEX") < report.index("ADVENTURE OF THE SEAS")
+
+
+def test_royal_caribbean_configuration_has_all_30_ships_in_order() -> None:
+    fleet = load_fleet(profile="royal-caribbean")
+    names = [vessel.name for vessel in fleet.vessels]
+
+    assert fleet.cruise_line_order == ("Royal Caribbean International",)
+    assert len(fleet.vessels) == 30
+    assert {vessel.mmsi for vessel in fleet.vessels} == ROYAL_CARIBBEAN_MMSIS
+    assert names == sorted(names, key=str.casefold)
+    assert all(vessel.active for vessel in fleet.vessels)
+
+
+def test_royal_caribbean_cached_preview_uses_shared_cache(
+    tmp_path, monkeypatch
+) -> None:
+    data_dir = tmp_path / "app-data"
+    monkeypatch.setenv("SHIP_TRACKER_DATA_DIR", str(data_dir))
+    cache = PositionCache(data_dir / "ais-cache.sqlite3")
+    cache.update(_position("Adventure of the Seas"))
+    cache.update(_position("Celebrity Apex"))
+    output = tmp_path / "royal-caribbean.txt"
+
+    result = cli.main(
+        [
+            "preview",
+            "--cached",
+            "--fleet",
+            "royal-caribbean",
+            "--at",
+            NOW.isoformat(),
+            "--output",
+            str(output),
+        ]
+    )
+
+    report = output.read_text(encoding="utf-8")
+    assert result == 0
+    assert "Royal Caribbean Reporting: 1 / 30" in report
+    assert "ADVENTURE OF THE SEAS" in report
+    assert "CELEBRITY APEX" not in report
+
+
+def test_royal_caribbean_missing_and_stale_positions(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "ais-cache.sqlite3")
+    cache.update(_position("Adventure of the Seas", NOW - timedelta(hours=18)))
+
+    report = render_cached_report(
+        cache,
+        generated_at=NOW,
+        fleet_profile="royal-caribbean",
+    )
+
+    assert "Royal Caribbean Reporting: 1 / 30" in report
+    assert "Last AIS report 18 hours ago" in report
+    assert "NO RECENT AIS (29)" in report
+
+
+def test_cli_accepts_hyphenated_royal_caribbean_profile() -> None:
+    args = cli.build_parser().parse_args(
+        ["preview", "--cached", "--fleet", "royal-caribbean"]
+    )
+
+    assert args.fleet == "royal-caribbean"
+
+
+@pytest.mark.parametrize(
+    ("vessels", "message"),
+    [
+        (
+            [
+                {"name": "Ship One", "imo": "9167227", "mmsi": "311263000"},
+                {"name": "Ship Two", "imo": "9383948", "mmsi": "311263000"},
+            ],
+            "Duplicate MMSI",
+        ),
+        (
+            [
+                {"name": "Ship One", "imo": "9167227", "mmsi": "311263000"},
+                {"name": "Ship Two", "imo": "9167227", "mmsi": "311020700"},
+            ],
+            "Duplicate IMO",
+        ),
+        (
+            [{"name": "Ship One", "imo": "9167227", "mmsi": "123"}],
+            "Malformed MMSI",
+        ),
+        (
+            [{"name": "Ship One", "imo": "1234560", "mmsi": "311263000"}],
+            "Malformed IMO",
+        ),
+        (
+            [{"imo": "9167227", "mmsi": "311263000"}],
+            "no name",
+        ),
+    ],
+)
+def test_fleet_validation_rejects_invalid_vessel_identifiers(
+    tmp_path, vessels, message
+) -> None:
+    config_path = tmp_path / "fleet.yaml"
+    config_path.write_text(
+        json.dumps(
+            {
+                "cruise_lines": [
+                    {
+                        "name": "Test Fleet",
+                        "profile": "test-fleet",
+                        "vessels": vessels,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match=message):
+        load_fleet(config_path, profile="test-fleet")

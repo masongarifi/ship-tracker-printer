@@ -13,6 +13,8 @@ from .base import PositionProvider
 
 AISSTREAM_URL = "wss://stream.aisstream.io/v0/stream"
 WORLD_BOUNDING_BOX = [[[-90.0, -180.0], [90.0, 180.0]]]
+MAX_MMSIS_PER_SUBSCRIPTION = 50
+SUBSCRIPTION_ROTATION_SECONDS = 30.0
 
 
 class AISStreamError(RuntimeError):
@@ -33,8 +35,6 @@ class AISStreamProvider(PositionProvider):
         configured = list(_configured_by_mmsi(vessels).values())
         if not configured:
             raise AISStreamError("No active vessels have an MMSI configured")
-        if len(configured) > 50:
-            raise AISStreamError("AISstream.io supports at most 50 MMSIs per subscription")
         try:
             return asyncio.run(self._fetch(configured))
         except AISStreamError:
@@ -52,8 +52,6 @@ class AISStreamProvider(PositionProvider):
         configured = list(_configured_by_mmsi(vessels).values())
         if not configured:
             raise AISStreamError("No active vessels have an MMSI configured")
-        if len(configured) > 50:
-            raise AISStreamError("AISstream.io supports at most 50 MMSIs per subscription")
         asyncio.run(
             self._listen_forever(
                 configured, on_position, on_health, initial_positions or {}
@@ -75,7 +73,7 @@ class AISStreamProvider(PositionProvider):
             ) from exc
 
         by_mmsi = {str(vessel.mmsi): vessel for vessel in vessels}
-        subscription = json.dumps(build_subscription(self.api_key, list(by_mmsi)))
+        all_mmsis = list(by_mmsi)
         static_data: Dict[str, Dict[str, Optional[str]]] = {}
         latest_positions: Dict[str, Position] = {
             mmsi: initial_positions[vessel.name.casefold()]
@@ -88,11 +86,35 @@ class AISStreamProvider(PositionProvider):
                 if on_health:
                     on_health("connecting", None)
                 async with websockets.connect(AISSTREAM_URL, open_timeout=10) as websocket:
-                    await websocket.send(subscription)
+                    offset = 0
+                    await _send_subscription(websocket, self.api_key, all_mmsis, offset)
+                    loop = asyncio.get_running_loop()
+                    next_rotation = (
+                        loop.time() + SUBSCRIPTION_ROTATION_SECONDS
+                        if len(all_mmsis) > MAX_MMSIS_PER_SUBSCRIPTION
+                        else None
+                    )
                     if on_health:
                         on_health("connected", None)
                     delay = 1
-                    async for payload in websocket:
+                    while True:
+                        if next_rotation is None:
+                            payload = await websocket.recv()
+                        else:
+                            try:
+                                payload = await asyncio.wait_for(
+                                    websocket.recv(),
+                                    timeout=max(0, next_rotation - loop.time()),
+                                )
+                            except asyncio.TimeoutError:
+                                offset = _next_window_offset(offset, len(all_mmsis))
+                                await _send_subscription(
+                                    websocket, self.api_key, all_mmsis, offset
+                                )
+                                next_rotation = (
+                                    loop.time() + SUBSCRIPTION_ROTATION_SECONDS
+                                )
+                                continue
                         message = json.loads(payload)
                         if "error" in message:
                             raise AISStreamError(str(message["error"]))
@@ -131,21 +153,41 @@ class AISStreamProvider(PositionProvider):
             ) from exc
 
         by_mmsi = {str(vessel.mmsi): vessel for vessel in vessels}
-        subscription = build_subscription(self.api_key, list(by_mmsi))
+        all_mmsis = list(by_mmsi)
         positions: Dict[str, Position] = {}
         loop = asyncio.get_running_loop()
         deadline = loop.time() + self.timeout_seconds
 
         async with websockets.connect(AISSTREAM_URL, open_timeout=10) as websocket:
-            await websocket.send(json.dumps(subscription))
+            offset = 0
+            await _send_subscription(websocket, self.api_key, all_mmsis, offset)
+            next_rotation = (
+                loop.time() + SUBSCRIPTION_ROTATION_SECONDS
+                if len(all_mmsis) > MAX_MMSIS_PER_SUBSCRIPTION
+                else None
+            )
             while len(positions) < len(by_mmsi):
                 remaining = deadline - loop.time()
                 if remaining <= 0:
                     break
+                receive_timeout = (
+                    min(remaining, max(0, next_rotation - loop.time()))
+                    if next_rotation is not None
+                    else remaining
+                )
                 try:
-                    payload = await asyncio.wait_for(websocket.recv(), timeout=remaining)
+                    payload = await asyncio.wait_for(
+                        websocket.recv(), timeout=receive_timeout
+                    )
                 except asyncio.TimeoutError:
-                    break
+                    if next_rotation is None or loop.time() >= deadline:
+                        break
+                    offset = _next_window_offset(offset, len(all_mmsis))
+                    await _send_subscription(
+                        websocket, self.api_key, all_mmsis, offset
+                    )
+                    next_rotation = loop.time() + SUBSCRIPTION_ROTATION_SECONDS
+                    continue
                 message = json.loads(payload)
                 position = position_from_message(message, by_mmsi)
                 if position is not None:
@@ -156,12 +198,48 @@ class AISStreamProvider(PositionProvider):
 def build_subscription(api_key: str, mmsis: Sequence[str]) -> Dict[str, Any]:
     if not api_key or not api_key.strip():
         raise AISStreamError("AISSTREAM_API_KEY is missing or empty")
+    unique_mmsis = list(dict.fromkeys(str(mmsi) for mmsi in mmsis))
+    if len(unique_mmsis) > MAX_MMSIS_PER_SUBSCRIPTION:
+        raise AISStreamError(
+            f"AISstream.io supports at most {MAX_MMSIS_PER_SUBSCRIPTION} "
+            "MMSIs per subscription"
+        )
     return {
         "APIKey": api_key.strip(),
         "BoundingBoxes": WORLD_BOUNDING_BOX,
-        "FiltersShipMMSI": list(dict.fromkeys(str(mmsi) for mmsi in mmsis)),
+        "FiltersShipMMSI": unique_mmsis,
         "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
     }
+
+
+def subscription_window(
+    mmsis: Sequence[str],
+    offset: int = 0,
+) -> list[str]:
+    unique = list(dict.fromkeys(str(mmsi) for mmsi in mmsis))
+    if len(unique) <= MAX_MMSIS_PER_SUBSCRIPTION:
+        return unique
+    start = offset % len(unique)
+    return [
+        unique[(start + index) % len(unique)]
+        for index in range(MAX_MMSIS_PER_SUBSCRIPTION)
+    ]
+
+
+async def _send_subscription(
+    websocket,
+    api_key: str,
+    mmsis: Sequence[str],
+    offset: int,
+) -> None:
+    window = subscription_window(mmsis, offset)
+    await websocket.send(json.dumps(build_subscription(api_key, window)))
+
+
+def _next_window_offset(offset: int, vessel_count: int) -> int:
+    if vessel_count <= MAX_MMSIS_PER_SUBSCRIPTION:
+        return 0
+    return (offset + vessel_count - MAX_MMSIS_PER_SUBSCRIPTION) % vessel_count
 
 
 def _configured_by_mmsi(vessels: Sequence[Vessel]) -> Dict[str, Vessel]:

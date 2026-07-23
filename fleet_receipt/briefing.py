@@ -143,6 +143,8 @@ def _line_label(name: str) -> str:
         return "HAL"
     if name.casefold() == "celebrity cruises":
         return "Celebrity"
+    if name.casefold() == "royal caribbean international":
+        return "Royal Caribbean"
     return name
 
 

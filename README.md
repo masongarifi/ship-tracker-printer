@@ -2,9 +2,10 @@
 
 Fleet Receipt is an offline-first Python application for producing a readable Holland America Line and Seabourn fleet operations briefing. Its target is an Epson TM-L90 connected to a Raspberry Pi; the safe text backend supports development before printer hardware is connected.
 
-The fleet is configuration, not application code. All 31 Holland America,
-Seabourn, and Celebrity vessels and their IMO/MMSI identifiers are in
-`config/fleet.yaml`.
+The fleet is configuration, not application code. All 61 Holland America,
+Seabourn, Celebrity, and Royal Caribbean vessels and their IMO/MMSI identifiers
+are in `config/fleet.yaml`. The Royal Caribbean International profile contains
+30 active ships.
 
 ## Phase 1 capabilities
 
@@ -85,9 +86,12 @@ plus `ShipStaticData` messages. Static reports supply destination and ETA when
 the vessel broadcasts them.
 
 One listener tracks every active ship from every configured fleet profile over
-one deduplicated AISstream.io subscription. All updates are written to the same
-persistent SQLite cache. Fleet-specific commands and web pages only filter what
-is displayed; they do not start another listener or create another database.
+one AISstream.io websocket connection. Because AISstream.io permits at most 50
+MMSIs per subscription, the listener rotates a deduplicated 50-ship window
+across all 61 ships every 30 seconds. Every consecutive pair of windows covers
+the full fleet. All updates are written to the same persistent SQLite cache.
+Fleet-specific commands and web pages only filter what is displayed; they do
+not start another listener or create another database.
 
 AIS destination strings are normalized before printing using the complete
 official UNECE UN/LOCODE release. Routes such as `GB SOU > NL RTM` become
@@ -155,17 +159,26 @@ Available routes:
 - `/` — the existing combined Holland America and Seabourn report
 - `/celebrity` — Celebrity Cruises report
 - `/profile/celebrity` — alternate Celebrity Cruises route
+- `/royal-caribbean` — Royal Caribbean International report
+- `/profile/royal-caribbean` — alternate Royal Caribbean route
 - `/all` — every configured fleet, grouped by cruise line
 - `/api/report` — the same rendered report as UTF-8 plain text
 - `/health` — cache availability, vessel count, and newest AIS update age
 
-The page navigation links switch among HAL + Seabourn, Celebrity, and all
-fleets. Each view uses the same receipt renderer and refreshes automatically.
+The page navigation links switch among HAL + Seabourn, Celebrity, Royal
+Caribbean, and all fleets. Each view uses the same receipt renderer and
+refreshes automatically.
 
 To print the Celebrity report from the shared cache:
 
 ```bash
 fleet-receipt preview --cached --fleet celebrity
+```
+
+To print the 30-ship Royal Caribbean report from the same cache:
+
+```bash
+fleet-receipt preview --cached --fleet royal-caribbean
 ```
 
 To preview every configured fleet:

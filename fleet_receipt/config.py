@@ -47,18 +47,34 @@ def load_fleet(
         if selected_profile != "all" and line_profile != selected_profile:
             continue
         order.append(line_name)
+        line_mmsis = set()
+        line_imos = set()
         for item in line.get("vessels", []):
-            name = str(item["name"]).strip()
+            if not isinstance(item, dict):
+                raise ConfigurationError(f"{line_name} contains an invalid vessel entry")
+            name = str(item.get("name") or "").strip()
+            if not name:
+                raise ConfigurationError(f"{line_name} contains a vessel with no name")
             key = name.casefold()
             if key in seen:
                 raise ConfigurationError(f"Duplicate vessel name: {name}")
             seen.add(key)
+            imo = _validated_identifier(item.get("imo"), "IMO", name)
+            mmsi = _validated_identifier(item.get("mmsi"), "MMSI", name)
+            if mmsi in line_mmsis:
+                raise ConfigurationError(f"Duplicate MMSI in {line_name}: {mmsi}")
+            if imo in line_imos:
+                raise ConfigurationError(f"Duplicate IMO in {line_name}: {imo}")
+            if mmsi:
+                line_mmsis.add(mmsi)
+            if imo:
+                line_imos.add(imo)
             vessels.append(
                 Vessel(
                     cruise_line=line_name,
                     name=name,
-                    imo=_identifier(item.get("imo")),
-                    mmsi=_identifier(item.get("mmsi")),
+                    imo=imo,
+                    mmsi=mmsi,
                     active=bool(item.get("active", True)),
                     notes=item.get("notes"),
                 )
@@ -68,10 +84,18 @@ def load_fleet(
     return FleetData(tuple(order), tuple(vessels))
 
 
-def _identifier(value: Any):
+def _validated_identifier(value: Any, kind: str, vessel_name: str):
     if value is None or value == "":
         return None
-    return str(value)
+    identifier = str(value)
+    expected_length = 9 if kind == "MMSI" else 7
+    if not identifier.isdigit() or len(identifier) != expected_length:
+        raise ConfigurationError(f"Malformed {kind} for {vessel_name}: {identifier}")
+    if kind == "IMO":
+        check_digit = sum(int(digit) * weight for digit, weight in zip(identifier, range(7, 1, -1)))
+        if check_digit % 10 != int(identifier[-1]):
+            raise ConfigurationError(f"Malformed IMO for {vessel_name}: {identifier}")
+    return identifier
 
 
 def load_settings(path: Path = PROJECT_ROOT / "config" / "settings.yaml") -> Dict[str, Any]:

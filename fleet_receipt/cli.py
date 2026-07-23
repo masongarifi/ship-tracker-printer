@@ -39,7 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument(
         "--fleet",
         default="main",
-        help="Fleet profile to display: main, celebrity, or all (default: main)",
+        help=(
+            "Fleet profile to display: main, celebrity, royal-caribbean, "
+            "or all (default: main)"
+        ),
     )
     preview.add_argument(
         "--output",

@@ -181,3 +181,30 @@ def test_all_page_groups_main_and_celebrity_fleets(tmp_path) -> None:
     assert "Seabourn Reporting: 0 / 5" in response.text
     assert "Celebrity Reporting: 1 / 15" in response.text
     assert response.text.index("KONINGSDAM") < response.text.index("CELEBRITY APEX")
+
+
+def test_royal_caribbean_routes_render_shared_cached_report(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Adventure of the Seas"))
+    cache.update(_position(vessel_name="Celebrity Apex"))
+    client = _client(cache)
+
+    for route in ("/royal-caribbean", "/profile/royal-caribbean"):
+        response = client.get(route)
+        assert response.status_code == 200
+        assert "Royal Caribbean International" in response.text
+        assert "Royal Caribbean Reporting: 1 / 30" in response.text
+        assert "ADVENTURE OF THE SEAS" in response.text
+        assert "CELEBRITY APEX" not in response.text
+
+
+def test_all_page_includes_royal_caribbean_group(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Adventure of the Seas"))
+
+    response = _client(cache).get("/all")
+
+    assert response.status_code == 200
+    assert "Royal Caribbean Reporting: 1 / 30" in response.text
+    assert "ROYAL CARIBBEAN INTERNATIONAL" in response.text
+    assert '<a href="/royal-caribbean">Royal Caribbean</a>' in response.text

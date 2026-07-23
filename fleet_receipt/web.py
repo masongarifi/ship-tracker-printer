@@ -45,6 +45,14 @@ def create_app(
     def celebrity_profile_page():
         return profile_page("celebrity", "Celebrity Cruises")
 
+    @app.get("/royal-caribbean", response_class=HTMLResponse)
+    def royal_caribbean_page():
+        return profile_page("royal-caribbean", "Royal Caribbean International")
+
+    @app.get("/profile/royal-caribbean", response_class=HTMLResponse)
+    def royal_caribbean_profile_page():
+        return profile_page("royal-caribbean", "Royal Caribbean International")
+
     @app.get("/all", response_class=HTMLResponse)
     def all_fleets_page():
         return profile_page("all", "All Fleets")
@@ -184,6 +192,7 @@ def _receipt_html(report: str, refreshed_at: datetime, heading: str) -> str:
     <nav aria-label="Fleet reports">
       <a href="/">HAL + Seabourn</a>
       <a href="/celebrity">Celebrity</a>
+      <a href="/royal-caribbean">Royal Caribbean</a>
       <a href="/all">All Fleets</a>
     </nav>
     <pre aria-label="Fleet operations receipt">{safe_report}</pre>

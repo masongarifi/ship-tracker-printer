@@ -46,6 +46,42 @@
         {"name": "Celebrity Summit", "imo": "9192387", "mmsi": "249047000", "active": true, "notes": "IMO and MMSI supplied"},
         {"name": "Celebrity Xcel", "imo": "9884136", "mmsi": "249457000", "active": true, "notes": "IMO and MMSI supplied"}
       ]
+    },
+    {
+      "name": "Royal Caribbean International",
+      "profile": "royal-caribbean",
+      "vessels": [
+        {"name": "Adventure of the Seas", "imo": "9167227", "mmsi": "311263000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Allure of the Seas", "imo": "9383948", "mmsi": "311020700", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Anthem of the Seas", "imo": "9656101", "mmsi": "311000274", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Brilliance of the Seas", "imo": "9195200", "mmsi": "311361000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Enchantment of the Seas", "imo": "9111802", "mmsi": "311733000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Explorer of the Seas", "imo": "9161728", "mmsi": "311316000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Freedom of the Seas", "imo": "9304033", "mmsi": "309906000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Grandeur of the Seas", "imo": "9102978", "mmsi": "311315000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Harmony of the Seas", "imo": "9682875", "mmsi": "311000396", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Icon of the Seas", "imo": "9829930", "mmsi": "311001178", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Independence of the Seas", "imo": "9349681", "mmsi": "309374000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Jewel of the Seas", "imo": "9228356", "mmsi": "311583000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Legend of the Seas", "imo": "9888560", "mmsi": "311001716", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Liberty of the Seas", "imo": "9330032", "mmsi": "309436000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Mariner of the Seas", "imo": "9227510", "mmsi": "311493000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Navigator of the Seas", "imo": "9227508", "mmsi": "311478000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Oasis of the Seas", "imo": "9383936", "mmsi": "311020600", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Odyssey of the Seas", "imo": "9795737", "mmsi": "311000912", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Ovation of the Seas", "imo": "9697753", "mmsi": "311000397", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Quantum of the Seas", "imo": "9549463", "mmsi": "311000267", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Radiance of the Seas", "imo": "9195195", "mmsi": "311319000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Rhapsody of the Seas", "imo": "9116864", "mmsi": "311805000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Serenade of the Seas", "imo": "9228344", "mmsi": "311492000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Spectrum of the Seas", "imo": "9778856", "mmsi": "311000749", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Star of the Seas", "imo": "9829942", "mmsi": "311001551", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Symphony of the Seas", "imo": "9744001", "mmsi": "311000660", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Utopia of the Seas", "imo": "9880001", "mmsi": "311001259", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Vision of the Seas", "imo": "9116876", "mmsi": "311321000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Voyager of the Seas", "imo": "9161716", "mmsi": "311317000", "active": true, "notes": "IMO and MMSI supplied"},
+        {"name": "Wonder of the Seas", "imo": "9838345", "mmsi": "311001033", "active": true, "notes": "IMO and MMSI supplied"}
+      ]
     }
   ]
 }
