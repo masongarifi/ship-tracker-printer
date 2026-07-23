@@ -66,6 +66,13 @@ def test_main_page_renders_dashboard_from_cache(tmp_path) -> None:
     assert "Displaying 1 vessels currently reporting via AIS." in response.text
     assert "/static/css/main.css" in response.text
     assert "/static/dashboard.js" in response.text
+    asset_versions = re.findall(r"/static/[^\"?]+\?v=([a-f0-9]{12})", response.text)
+    assert len(asset_versions) == 2
+    assert len(set(asset_versions)) == 1
+    assert 'class="fleet-metric fleet-metric--reporting"' in response.text
+    assert 'class="fleet-metric fleet-metric--unavailable"' in response.text
+    assert 'class="fleet-metric fleet-metric--underway"' in response.text
+    assert 'class="fleet-metric fleet-metric--moored"' in response.text
 
 
 def test_web_uses_positions_from_persistent_cache(tmp_path) -> None:
@@ -371,6 +378,9 @@ def test_shared_styles_and_dashboard_assets_are_served(tmp_path) -> None:
 
     assert css.status_code == 200
     assert "--navy-950" in css.text
+    assert 'grid-template-areas:' in css.text
+    assert '"reporting unavailable"' in css.text
+    assert '"underway moored"' in css.text
     assert javascript.status_code == 200
     assert "setInterval" not in javascript.text
     assert "fetch(" not in javascript.text
@@ -468,4 +478,4 @@ def test_leaflet_assets_load_before_dashboard_initialization(tmp_path) -> None:
     leaflet_imports = response.text[leaflet_css - 100 : dashboard_js]
     assert "integrity=" not in leaflet_imports
     assert "crossorigin=" not in leaflet_imports
-    assert "/static/dashboard.js?v=0.1.0" in response.text
+    assert re.search(r"/static/dashboard\.js\?v=[a-f0-9]{12}", response.text)

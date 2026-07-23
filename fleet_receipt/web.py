@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -24,6 +25,18 @@ from .reporting import render_cached_report
 REFRESH_SECONDS = 30
 PACKAGE_ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=PACKAGE_ROOT / "templates")
+
+
+def _static_asset_version() -> str:
+    digest = sha256()
+    for path in sorted((PACKAGE_ROOT / "static").rglob("*")):
+        if path.is_file():
+            digest.update(path.relative_to(PACKAGE_ROOT).as_posix().encode("utf-8"))
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+TEMPLATES.env.globals["asset_version"] = _static_asset_version()
 
 
 def create_app(

@@ -93,5 +93,5 @@
 {% block scripts %}
   <script id="fleet-map-data" type="application/json">{{ dashboard.markers | tojson }}</script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="{{ url_for('static', path='/dashboard.js') }}?v={{ version }}" defer></script>
+  <script src="{{ url_for('static', path='/dashboard.js') }}?v={{ asset_version }}" defer></script>
 {% endblock %}
