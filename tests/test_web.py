@@ -393,24 +393,25 @@ def test_shared_styles_and_dashboard_assets_are_served(tmp_path) -> None:
     assert "L.divIcon" in javascript.text
     assert "L.marker" in javascript.text
     assert "L.circleMarker" not in javascript.text
-    assert "iconSize: [30, 30]" in javascript.text
+    assert "iconSize: [16, 16]" in javascript.text
 
 
-def test_map_uses_exact_fleet_identifiers_and_emoji_fallback(tmp_path) -> None:
+def test_map_uses_exact_fleet_identifiers_and_colored_dot_fallback(tmp_path) -> None:
     javascript = _client(PositionCache(tmp_path / "positions.sqlite3")).get(
         "/static/dashboard.js"
     ).text
 
     expected_mapping = {
-        "Holland America Line": "🚢",
-        "Seabourn": "⚓",
-        "Celebrity Cruises": "🌊",
-        "Royal Caribbean International": "🛳️",
+        "Holland America Line": "fleet-map-marker--hal",
+        "Seabourn": "fleet-map-marker--seabourn",
+        "Celebrity Cruises": "fleet-map-marker--celebrity",
+        "Royal Caribbean International": "fleet-map-marker--royal-caribbean",
     }
-    for fleet_name, emoji in expected_mapping.items():
+    for fleet_name, marker_class in expected_mapping.items():
         assert fleet_name in javascript
-        assert emoji in javascript
-    assert '|| "🚢"' in javascript
+        assert marker_class in javascript
+    assert '"fleet-map-marker--unknown"' in javascript
+    assert 'html: ""' in javascript
     assert "/static/img/fleets/" not in javascript
     assert "<img" not in javascript
 

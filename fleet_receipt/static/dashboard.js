@@ -1,17 +1,17 @@
 (() => {
   "use strict";
 
-  const FLEET_MARKERS = Object.freeze({
-    "Holland America Line": "🚢",
-    Seabourn: "⚓",
-    "Celebrity Cruises": "🌊",
-    "Royal Caribbean International": "🛳️",
-    "Carnival Cruise Line": "🎉",
-    "Princess Cruises": "👑",
-    Cunard: "⚜️",
-    "P&O Cruises": "🧭",
-    "Costa Cruises": "☀️",
-    "AIDA Cruises": "🎨",
+  const FLEET_MARKER_CLASSES = Object.freeze({
+    "Holland America Line": "fleet-map-marker--hal",
+    Seabourn: "fleet-map-marker--seabourn",
+    "Celebrity Cruises": "fleet-map-marker--celebrity",
+    "Royal Caribbean International": "fleet-map-marker--royal-caribbean",
+    "Carnival Cruise Line": "fleet-map-marker--carnival",
+    "Princess Cruises": "fleet-map-marker--princess",
+    Cunard: "fleet-map-marker--cunard",
+    "P&O Cruises": "fleet-map-marker--p-and-o",
+    "Costa Cruises": "fleet-map-marker--costa",
+    "AIDA Cruises": "fleet-map-marker--aida",
   });
 
   document.addEventListener("DOMContentLoaded", initializeFleetMap, { once: true });
@@ -113,13 +113,14 @@
   }
 
   function fleetIcon(fleet) {
-    const emoji = FLEET_MARKERS[String(fleet)] || "🚢";
+    const markerClass =
+      FLEET_MARKER_CLASSES[String(fleet)] || "fleet-map-marker--unknown";
     return window.L.divIcon({
-      className: "fleet-map-marker",
-      html: `<span aria-hidden="true">${emoji}</span>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      popupAnchor: [0, -17],
+      className: `fleet-map-marker ${markerClass}`,
+      html: "",
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      popupAnchor: [0, -10],
     });
   }
 

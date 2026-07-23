@@ -356,20 +356,54 @@ h2 {
 }
 
 .fleet-map-marker {
-  display: grid;
-  place-items: center;
-  border: 1px solid #6f8493;
+  border: 2px solid var(--white);
   border-radius: 50%;
-  background: var(--white);
+  background: #64748b;
   box-shadow: 0 2px 7px rgb(7 27 45 / 28%);
 }
 
-.fleet-map-marker span {
-  display: block;
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
-    sans-serif;
-  font-size: 17px;
-  line-height: 1;
+.fleet-map-marker--hal {
+  background: #123b5d;
+}
+
+.fleet-map-marker--seabourn {
+  background: #8b6f47;
+}
+
+.fleet-map-marker--celebrity {
+  background: #0891b2;
+}
+
+.fleet-map-marker--royal-caribbean {
+  background: #2563eb;
+}
+
+.fleet-map-marker--carnival {
+  background: #dc2626;
+}
+
+.fleet-map-marker--princess {
+  background: #7c3aed;
+}
+
+.fleet-map-marker--cunard {
+  background: #b91c1c;
+}
+
+.fleet-map-marker--p-and-o {
+  background: #0f766e;
+}
+
+.fleet-map-marker--costa {
+  background: #d97706;
+}
+
+.fleet-map-marker--aida {
+  background: #db2777;
+}
+
+.fleet-map-marker--unknown {
+  background: #64748b;
 }
 
 .fleet-grid {
