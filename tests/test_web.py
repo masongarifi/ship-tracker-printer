@@ -66,6 +66,15 @@ def test_main_page_renders_dashboard_from_cache(tmp_path) -> None:
     assert "Displaying 1 vessels currently reporting via AIS." in response.text
     assert "/static/css/main.css" in response.text
     assert "/static/dashboard.js" in response.text
+    assert "Why are some ships not updating?" in response.text
+    assert "About Ship Positions" in response.text
+    assert (
+        "Fleet Tracker is powered by the free community AIS network from "
+        "AISStream.io."
+        in response.text
+    )
+    assert "satellite AIS, or additional commercial data sources" in response.text
+    assert "No recent reception" in response.text
     asset_versions = re.findall(r"/static/[^\"?]+\?v=([a-f0-9]{12})", response.text)
     assert len(asset_versions) == 2
     assert len(set(asset_versions)) == 1
@@ -349,6 +358,16 @@ def test_ship_detail_page_uses_cached_position(tmp_path) -> None:
     assert "9692557" in response.text
     assert "15.2 kt" in response.text
     assert "Last AIS update" in response.text
+
+
+def test_ship_without_cached_position_uses_reception_wording(tmp_path) -> None:
+    response = _client(PositionCache(tmp_path / "positions.sqlite3")).get(
+        "/ship/koningsdam"
+    )
+
+    assert response.status_code == 200
+    assert "No recent reception" in response.text
+    assert "Not reporting" not in response.text
 
 
 def test_dashboard_reads_cache_once_per_request(tmp_path) -> None:

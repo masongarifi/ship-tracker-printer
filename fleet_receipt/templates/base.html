@@ -43,6 +43,17 @@
         <span>Cloudflare Tunnel</span>
       </p>
     </div>
+    <details class="data-disclaimer">
+      <summary>Why are some ships not updating?</summary>
+      <div class="data-disclaimer-content">
+        <h2>About Ship Positions</h2>
+        <p>Fleet Tracker is powered by the free community AIS network from AISStream.io.</p>
+        <p>Commercial vessels continuously broadcast their position using the Automatic Identification System, or AIS. In most cases, a missing or outdated position does not indicate a problem with the ship’s equipment. The ship is likely transmitting normally.</p>
+        <p>Position updates depend on whether an AISStream.io shore based receiver is within range to receive the signal. Coverage is strongest near ports and populated coastlines. Ships sailing farther offshore, in remote regions, or outside AISStream.io’s receiver network may not update for hours or even days.</p>
+        <p>Other tracking services may show newer positions because they use different terrestrial receiver networks, satellite AIS, or additional commercial data sources.</p>
+        <p>Fleet Tracker stores each vessel’s last known position and updates it automatically when a new AIS transmission is received through AISStream.io.</p>
+      </div>
+    </details>
   </footer>
   {% block scripts %}{% endblock %}
 </body>
