@@ -298,7 +298,10 @@ def _ship_slots(
         _wrap_ascii(destination, width) if destination else [""],
         _wrap_ascii(eta, width) if eta else [""],
         _wrap_ascii(f"UTC {vessel.utc_time}", width),
-        _wrap_ascii(f"LOCAL {vessel.local_time}", width),
+        _wrap_ascii(
+            f"LOCAL {vessel.local_time.replace('Same as Seattle', 'Seattle')}",
+            width,
+        ),
         _wrap_ascii(age_label, width),
     ]
 
