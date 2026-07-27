@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Iterable, Mapping, Optional, Sequence
 
+from .ais_status import is_underway_status, navigational_status
 from .briefing import FleetBriefing, VesselBrief, build_fleet_briefing
 from .cache import PositionCache
 from .config import load_fleet, load_settings
@@ -102,7 +103,14 @@ def format_printer_receipt(
         )
         segments.extend(
             _format_pairs(
-                [_ship_slots(vessel, column_width) for vessel in vessels],
+                [
+                    _ship_slots(
+                        vessel,
+                        positions[vessel.name.casefold()],
+                        column_width,
+                    )
+                    for vessel in vessels
+                ],
                 column_width,
             )
         )
@@ -208,8 +216,12 @@ def _available_sections(
     return sections
 
 
-def _ship_slots(vessel: VesselBrief, width: int) -> list[list[str]]:
-    movement = _movement_line(vessel.movement, width)
+def _ship_slots(
+    vessel: VesselBrief,
+    position: Position,
+    width: int,
+) -> list[list[str]]:
+    status, speed, course = _movement_rows(position, width)
     destination, eta = _voyage_lines(vessel.voyage, width)
     stale = vessel.age_heading.casefold().startswith("last")
     age_label = f"{'! ' if stale else ''}AIS {_compact_age(vessel.age)}"
@@ -223,7 +235,9 @@ def _ship_slots(vessel: VesselBrief, width: int) -> list[list[str]]:
         _wrap_ascii(vessel.name, width),
         _wrap_ascii(" | ".join(location), width),
         [coordinates],
-        _wrap_ascii(movement, width),
+        [status],
+        [speed],
+        [course],
         _wrap_ascii(destination, width) if destination else [""],
         _wrap_ascii(eta, width) if eta else [""],
         _wrap_ascii(f"UTC {vessel.utc_time}", width),
@@ -240,32 +254,62 @@ def _missing_slots(name: str, width: int) -> list[list[str]]:
     ]
 
 
-def _movement_line(value: str, width: int) -> str:
-    cleaned = _ascii(value)
-    match = re.match(
-        r"^(.*?)\s+CRS\s+(\d{1,3})\s+at\s+([0-9.]+)\s+kts?$",
-        cleaned,
-        re.IGNORECASE,
+def _movement_rows(
+    position: Position,
+    width: int,
+) -> tuple[str, str, str]:
+    status = navigational_status(position.navigational_status)
+    underway = is_underway_status(position.navigational_status)
+    normalized = " ".join(status.upper().split())
+    if underway:
+        visible_status = "UNDERWAY"
+    elif normalized in {"AT ANCHOR", "ANCHORED"}:
+        visible_status = "AT ANCHOR"
+    elif normalized == "MOORED":
+        visible_status = "MOORED"
+    elif normalized in {
+        "NAVIGATIONAL STATUS UNAVAILABLE",
+        "UNDEFINED / DEFAULT",
+        "UNKNOWN",
+    }:
+        visible_status = "UNKNOWN"
+    else:
+        visible_status = _fit_one_line(normalized, width)
+
+    speed = ""
+    course = ""
+    if underway:
+        if _valid_number(position.speed_knots) and position.speed_knots >= 0:
+            speed = f"{position.speed_knots:.1f} kn"
+        if (
+            _valid_number(position.course_degrees)
+            and 0 <= position.course_degrees < 360
+        ):
+            degrees = round(position.course_degrees) % 360
+            course = f"{degrees:03d} deg {_course_direction(degrees)}"
+
+    # A single space forces the paired renderer to retain the reserved row
+    # even when neither ship has a value for it.
+    return visible_status, speed or " ", course or " "
+
+
+def _fit_one_line(value: str, width: int) -> str:
+    if len(value) <= width:
+        return value
+    shortened = textwrap.shorten(value, width=width, placeholder="...")
+    return shortened if shortened != "..." else value[: width - 3] + "..."
+
+
+def _course_direction(degrees: int) -> str:
+    directions = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+    return directions[int((degrees + 22.5) // 45) % len(directions)]
+
+
+def _valid_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
     )
-    if match:
-        spaced = (
-            f"{match.group(1).upper()} | {int(match.group(2)):03d} deg"
-            f" | {match.group(3)} kt"
-        )
-        if len(spaced) <= width:
-            return spaced
-        return (
-            f"{match.group(1).upper()}|{int(match.group(2)):03d} deg"
-            f"|{match.group(3)} kt"
-        )
-    speed_match = re.match(
-        r"^(.*?)\s+at\s+([0-9.]+)\s+kts?$", cleaned, re.IGNORECASE
-    )
-    if speed_match:
-        return (
-            f"{speed_match.group(1).upper()} | {speed_match.group(2)} kt"
-        )
-    return cleaned.upper()
 
 
 def _voyage_lines(value: Optional[str], width: int) -> tuple[str, str]:
