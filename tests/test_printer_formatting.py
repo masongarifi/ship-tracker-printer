@@ -11,6 +11,7 @@ from fleet_receipt.printer_formatting import (
     PrinterReceipt,
     _format_pairs,
     _movement_rows,
+    _receipt_location,
     _ship_slots,
     format_printer_receipt,
 )
@@ -360,6 +361,28 @@ def test_eurodam_koningsdam_location_fields_wrap_before_pairing(positions):
     assert not any(re.search(r"\d+\s+nm\b", line) for line in lines)
     assert not any(line.lstrip().startswith("@") for line in lines)
     assert all(len(line) <= FONT_B_PRINTABLE_WIDTH for line in lines)
+
+
+def test_receipt_locations_use_seattle_and_usps_abbreviations():
+    assert _receipt_location("Same as Seattle") == "Seattle"
+    assert _receipt_location("Juneau, Alaska") == "Juneau, AK"
+    assert _receipt_location("Seattle, Washington") == "Seattle, WA"
+    assert _receipt_location("Los Angeles, California") == "Los Angeles, CA"
+    assert _receipt_location("Miami, Florida") == "Miami, FL"
+    assert _receipt_location("Honolulu, Hawaii") == "Honolulu, HI"
+    assert _receipt_location("Galveston, Texas") == "Galveston, TX"
+    assert _receipt_location("115nm W of Seattle, Washington") == (
+        "115nm W of Seattle, WA"
+    )
+
+
+def test_receipt_locations_leave_cities_countries_and_non_us_regions_unchanged():
+    assert _receipt_location("Washington") == "Washington"
+    assert _receipt_location("Vancouver, British Columbia") == (
+        "Vancouver, British Columbia"
+    )
+    assert _receipt_location("Cozumel, Mexico") == "Cozumel, Mexico"
+    assert _receipt_location("Yokohama, Japan") == "Yokohama, Japan"
 
 
 def test_disabled_setting_returns_existing_single_column_receipt(
