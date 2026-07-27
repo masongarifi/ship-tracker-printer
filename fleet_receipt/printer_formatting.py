@@ -15,6 +15,10 @@ from .models import FleetData, Position
 FONT_A = "a"
 FONT_B = "b"
 COLUMN_GAP = 4
+# The TM-L90's Font B row is kept two characters below its nominal maximum.
+# This accounts for the printer's active printable area and prevents the
+# firmware from wrapping the completed left/right row.
+FONT_B_PRINTABLE_WIDTH = 54
 CARNIVAL_CORPORATION_LINES = {
     "Carnival Cruise Line",
     "Princess Cruises",
@@ -77,7 +81,10 @@ def format_printer_receipt(
     briefing = build_fleet_briefing(
         fleet, positions, generated_at, stale_after_hours, feed_health
     )
-    small_width = max(width, round(width * 4 / 3))
+    small_width = min(
+        FONT_B_PRINTABLE_WIDTH,
+        max(width, round(width * 4 / 3)),
+    )
     column_width = (small_width - COLUMN_GAP) // 2
     segments: list[ReceiptSegment] = []
 
@@ -225,15 +232,20 @@ def _ship_slots(
     destination, eta = _voyage_lines(vessel.voyage, width)
     stale = vessel.age_heading.casefold().startswith("last")
     age_label = f"{'! ' if stale else ''}AIS {_compact_age(vessel.age)}"
-    location = [f"@ {vessel.location}"]
+    location_fields = [f"@ {vessel.location}"]
     if vessel.landmark:
-        location.append(f"@ {vessel.landmark}")
+        location_fields.append(f"@ {vessel.landmark}")
+    location_lines = [
+        line
+        for field in location_fields
+        for line in _wrap_ascii(field, width)
+    ]
     coordinates = _coordinates(vessel.coordinates)
     if len(coordinates) > width:
         raise ValueError("Compact coordinates exceed printer column width")
     return [
         _wrap_ascii(vessel.name, width),
-        _wrap_ascii(" | ".join(location), width),
+        location_lines,
         [coordinates],
         [status],
         [speed],
@@ -379,11 +391,15 @@ def _format_pairs(
 
 
 def _paired_line(left: str, right: str, width: int) -> str:
+    if len(left) > width or len(right) > width:
+        raise ValueError("Ship field exceeded its fixed printer column")
     line = (
         left.ljust(width)
         + (" " * COLUMN_GAP)
         + right.ljust(width)
     )
+    if len(line) > FONT_B_PRINTABLE_WIDTH:
+        raise ValueError("Combined ship row exceeded the printer-safe width")
     return _ascii(line, strip=False).rstrip() + "\n"
 
 

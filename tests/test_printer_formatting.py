@@ -1,11 +1,16 @@
 from dataclasses import replace
 
 from fleet_receipt.formatting import format_receipt
+from fleet_receipt.briefing import VesselBrief
 from fleet_receipt.models import FleetData
 from fleet_receipt.printer_formatting import (
     COLUMN_GAP,
+    FONT_B_PRINTABLE_WIDTH,
     FONT_B,
+    PrinterReceipt,
+    _format_pairs,
     _movement_rows,
+    _ship_slots,
     format_printer_receipt,
 )
 
@@ -59,9 +64,10 @@ def test_column_wrapping_never_spills_into_other_column(
     ]
 
     assert listing_lines
-    assert all(len(line) <= 56 for line in listing_lines)
+    assert all(len(line) <= FONT_B_PRINTABLE_WIDTH for line in listing_lines)
     assert all(
-        line.ljust(56)[26:30] == " " * COLUMN_GAP for line in listing_lines
+        line.ljust(FONT_B_PRINTABLE_WIDTH)[25:29] == " " * COLUMN_GAP
+        for line in listing_lines
     )
 
 
@@ -89,8 +95,8 @@ def test_odd_ship_count_leaves_final_right_column_empty(
         line for line in receipt.text.splitlines() if line.startswith(final_name)
     )
 
-    assert final_line[:26].strip() == final_name
-    assert final_line[30:].strip() == ""
+    assert final_line[:25].strip() == final_name
+    assert final_line[29:].strip() == ""
 
 
 def test_two_column_printer_output_is_ascii_only(fleet, positions, report_time):
@@ -242,9 +248,11 @@ def test_long_ship_name_wraps_without_crossing_columns(
     ]
 
     assert any("A VERY LONG TEST VESSEL" in line for line in emphasized_lines)
-    assert all(len(line) <= 56 for line in emphasized_lines)
     assert all(
-        line.ljust(56)[26:30] == " " * COLUMN_GAP
+        len(line) <= FONT_B_PRINTABLE_WIDTH for line in emphasized_lines
+    )
+    assert all(
+        line.ljust(FONT_B_PRINTABLE_WIDTH)[25:29] == " " * COLUMN_GAP
         for line in emphasized_lines
     )
 
@@ -275,12 +283,57 @@ def test_left_and_right_status_rows_stay_aligned(
         if line.startswith("MOORED") and "UNDERWAY" in line
     )
 
-    assert lines[status_index][:26].strip() == "MOORED"
-    assert lines[status_index][30:].strip() == "UNDERWAY"
-    assert lines[status_index + 1][:26].strip() == ""
-    assert lines[status_index + 1][30:].strip() == "12.4 kn"
-    assert lines[status_index + 2][:26].strip() == ""
-    assert lines[status_index + 2][30:].strip() == "123 deg SE"
+    assert lines[status_index][:25].strip() == "MOORED"
+    assert lines[status_index][29:].strip() == "UNDERWAY"
+    assert lines[status_index + 1][:25].strip() == ""
+    assert lines[status_index + 1][29:].strip() == "12.4 kn"
+    assert lines[status_index + 2][:25].strip() == ""
+    assert lines[status_index + 2][29:].strip() == "123 deg SE"
+
+
+def test_eurodam_koningsdam_location_fields_wrap_before_pairing(positions):
+    eurodam = VesselBrief(
+        name="EURODAM",
+        location="Inside Passage",
+        landmark="57 nm S of Juneau",
+        coordinates="49 29.1N 127 00.8W",
+        movement="Moored",
+        voyage=None,
+        utc_time="09:00",
+        local_time="01:00 (-1 Seattle)",
+        age_heading="Updated",
+        age="4 hours ago",
+    )
+    koningsdam = VesselBrief(
+        name="KONINGSDAM",
+        location="Inside Passage",
+        landmark="81 nm N of Ketchikan",
+        coordinates="54 29.1N 131 38.9W",
+        movement="Underway",
+        voyage=None,
+        utc_time="09:05",
+        local_time="01:05 (-1 Seattle)",
+        age_heading="Updated",
+        age="3 hours ago",
+    )
+    blocks = [
+        _ship_slots(eurodam, positions["eurodam"], 25),
+        _ship_slots(koningsdam, positions["koningsdam"], 25),
+    ]
+    receipt = PrinterReceipt(tuple(_format_pairs(blocks, 25)))
+    lines = receipt.text.splitlines()
+    location_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line.startswith("@ Inside Passage")
+    )
+
+    assert lines[location_index][:25].strip() == "@ Inside Passage"
+    assert lines[location_index][29:].strip() == "@ Inside Passage"
+    assert lines[location_index + 1][:25].strip() == "@ 57 nm S of Juneau"
+    assert lines[location_index + 1][29:].strip() == "@ 81 nm N of Ketchikan"
+    assert not any(line.strip() in {"m", "n"} for line in lines)
+    assert all(len(line) <= FONT_B_PRINTABLE_WIDTH for line in lines)
 
 
 def test_disabled_setting_returns_existing_single_column_receipt(
