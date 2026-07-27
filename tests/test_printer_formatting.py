@@ -1,3 +1,4 @@
+import re
 from dataclasses import replace
 
 from fleet_receipt.formatting import format_receipt
@@ -106,7 +107,7 @@ def test_two_column_printer_output_is_ascii_only(fleet, positions, report_time):
 
     assert receipt.text.isascii()
     assert "DEST " in receipt.text
-    assert "@" in receipt.text
+    assert "@" not in receipt.text
     assert "→" not in receipt.text
     assert "°" not in receipt.text
 
@@ -123,7 +124,8 @@ def test_underway_reserves_status_speed_and_course_rows(
     assert "320 deg NW" in receipt.text
     assert "DEST Ketchikan" in receipt.text
     assert "AIS 8 min ago" in receipt.text
-    assert "! AIS 11 hr ago" in receipt.text
+    assert "AIS 11 hr ago" in receipt.text
+    assert "! AIS" not in receipt.text
     assert "CRS " not in receipt.text
     assert "Updated " not in receipt.text
 
@@ -295,7 +297,7 @@ def test_eurodam_koningsdam_location_fields_wrap_before_pairing(positions):
     eurodam = VesselBrief(
         name="EURODAM",
         location="Inside Passage",
-        landmark="57 nm S of Juneau",
+        landmark="24.6 nm S of Juneau",
         coordinates="49 29.1N 127 00.8W",
         movement="Moored",
         voyage=None,
@@ -307,7 +309,7 @@ def test_eurodam_koningsdam_location_fields_wrap_before_pairing(positions):
     koningsdam = VesselBrief(
         name="KONINGSDAM",
         location="Inside Passage",
-        landmark="81 nm N of Ketchikan",
+        landmark="80.6 nm N of Ketchikan",
         coordinates="54 29.1N 131 38.9W",
         movement="Underway",
         voyage=None,
@@ -325,14 +327,16 @@ def test_eurodam_koningsdam_location_fields_wrap_before_pairing(positions):
     location_index = next(
         index
         for index, line in enumerate(lines)
-        if line.startswith("@ Inside Passage")
+        if line.startswith("Inside Passage")
     )
 
-    assert lines[location_index][:25].strip() == "@ Inside Passage"
-    assert lines[location_index][29:].strip() == "@ Inside Passage"
-    assert lines[location_index + 1][:25].strip() == "@ 57 nm S of Juneau"
-    assert lines[location_index + 1][29:].strip() == "@ 81 nm N of Ketchikan"
+    assert lines[location_index][:25].strip() == "Inside Passage"
+    assert lines[location_index][29:].strip() == "Inside Passage"
+    assert lines[location_index + 1][:25].strip() == "25nm S of Juneau"
+    assert lines[location_index + 1][29:].strip() == "81nm N of Ketchikan"
     assert not any(line.strip() in {"m", "n"} for line in lines)
+    assert not any(re.search(r"\d+\s+nm\b", line) for line in lines)
+    assert not any(line.lstrip().startswith("@") for line in lines)
     assert all(len(line) <= FONT_B_PRINTABLE_WIDTH for line in lines)
 
 

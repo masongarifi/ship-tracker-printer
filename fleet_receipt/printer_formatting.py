@@ -2,6 +2,7 @@ import re
 import textwrap
 import unicodedata
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timezone
 from typing import Dict, Iterable, Mapping, Optional, Sequence
 
@@ -230,11 +231,10 @@ def _ship_slots(
 ) -> list[list[str]]:
     status, speed, course = _movement_rows(position, width)
     destination, eta = _voyage_lines(vessel.voyage, width)
-    stale = vessel.age_heading.casefold().startswith("last")
-    age_label = f"{'! ' if stale else ''}AIS {_compact_age(vessel.age)}"
-    location_fields = [f"@ {vessel.location}"]
+    age_label = f"AIS {_compact_age(vessel.age)}"
+    location_fields = [_receipt_location(vessel.location)]
     if vessel.landmark:
-        location_fields.append(f"@ {vessel.landmark}")
+        location_fields.append(_receipt_location(vessel.landmark))
     location_lines = [
         line
         for field in location_fields
@@ -431,6 +431,25 @@ def _compact_age(value: str) -> str:
     for pattern, replacement in replacements:
         cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
     return cleaned
+
+
+def _receipt_location(value: str) -> str:
+    """Return printer-safe location text with an indivisible rounded nm token."""
+    cleaned = _ascii(value)
+
+    def rounded_distance(match: re.Match[str]) -> str:
+        nautical_miles = Decimal(match.group(1)).quantize(
+            Decimal("1"),
+            rounding=ROUND_HALF_UP,
+        )
+        return f"{nautical_miles}nm"
+
+    return re.sub(
+        r"\b(\d+(?:\.\d+)?)\s*nm\b",
+        rounded_distance,
+        cleaned,
+        flags=re.IGNORECASE,
+    )
 
 
 def _wrap_ascii(value: str, width: int) -> list[str]:
