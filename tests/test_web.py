@@ -35,7 +35,44 @@ def _position(
 
 
 def _client(cache: PositionCache) -> TestClient:
-    return TestClient(create_app(cache=cache, now_factory=lambda: NOW))
+    return TestClient(
+        create_app(cache=cache, now_factory=lambda: NOW),
+        client=("127.0.0.1", 50000),
+    )
+
+
+def test_print_report_is_local_cache_only_and_filters_fleet(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(vessel_name="Koningsdam"))
+    cache.update(_position(vessel_name="Seabourn Ovation"))
+    cache.update(_position(vessel_name="Carnival Jubilee"))
+
+    response = _client(cache).get("/api/print-report")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "fleet-tracker-cache"
+    lines = {vessel["line"] for vessel in payload["vessels"]}
+    assert lines == {"Holland America Line", "Seabourn"}
+    assert "Carnival Jubilee" not in {
+        vessel["name"] for vessel in payload["vessels"]
+    }
+    koningsdam = next(
+        vessel for vessel in payload["vessels"]
+        if vessel["name"] == "Koningsdam"
+    )
+    assert koningsdam["available"] is True
+    assert koningsdam["position_age"] == "3 minutes ago"
+
+
+def test_print_report_rejects_non_loopback_clients(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    client = TestClient(
+        create_app(cache=cache, now_factory=lambda: NOW),
+        client=("192.0.2.10", 50000),
+    )
+
+    assert client.get("/api/print-report").status_code == 403
 
 
 def test_web_cli_defaults() -> None:

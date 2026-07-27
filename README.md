@@ -445,6 +445,22 @@ GPIO and systemd are intentionally deferred. The settings reserve the action nam
 
 The future scheduled updater will use a systemd timer with a 15-minute default. Exact installation commands will be documented when those units exist; there are no placeholder units in Phase 1 that could incorrectly imply a working service.
 
+### Local cached print API
+
+The running web process provides `GET /api/print-report` for the independent
+Morning Briefing button service. It reads the existing SQLite cache only: it
+does not invoke a provider, refresh AIS, or alter listener/service state. The
+JSON includes active Holland America Line and Seabourn ships in line/name order,
+including explicit stale and unavailable records. All other cruise lines are
+excluded.
+
+The route verifies that the request client is a loopback address and returns
+HTTP 403 to LAN clients. Use:
+
+```bash
+curl http://127.0.0.1:8000/api/print-report
+```
+
 ## Troubleshooting
 
 ### `No module named yaml`

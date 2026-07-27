@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from hashlib import sha256
+from ipaddress import ip_address
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -11,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from . import __version__
 from .cache import PositionCache
 from .config import ConfigurationError
-from .config import load_fleet
+from .config import load_fleet, load_settings
 from .dashboard import (
     build_dashboard,
     build_ship_detail,
@@ -21,6 +22,8 @@ from .dashboard import (
     vessel_slug,
 )
 from .reporting import render_cached_report
+from .briefing import build_vessel_brief
+from .ais_status import navigational_status
 
 REFRESH_SECONDS = 30
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -319,6 +322,67 @@ def create_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/api/print-report")
+    def print_report(request: Request):
+        """Return the HAL/Seabourn cache snapshot without refreshing AIS."""
+        if not _is_loopback(request.client.host if request.client else ""):
+            raise HTTPException(status_code=403, detail="Local access only")
+
+        generated_at = _aware_utc(clock())
+        fleet = load_fleet(profile="main")
+        stale_after_hours = float(load_settings().get("stale_after_hours", 6))
+        positions = active_cache.load()
+        vessels = []
+        for vessel in sorted(
+            (item for item in fleet.vessels if item.active),
+            key=lambda item: (
+                fleet.cruise_line_order.index(item.cruise_line),
+                item.name.casefold(),
+            ),
+        ):
+            position = positions.get(vessel.name.casefold())
+            if position is None:
+                vessels.append(
+                    {
+                        "name": vessel.name,
+                        "line": vessel.cruise_line,
+                        "available": False,
+                        "stale": False,
+                        "status_label": "UNAVAILABLE",
+                    }
+                )
+                continue
+            brief = build_vessel_brief(
+                vessel,
+                position,
+                generated_at,
+                stale_after_hours,
+            )
+            vessels.append(
+                {
+                    "name": vessel.name,
+                    "line": vessel.cruise_line,
+                    "available": True,
+                    "stale": brief.age_heading == "Last AIS report",
+                    "status_label": (
+                        "STALE" if brief.age_heading == "Last AIS report" else "CURRENT"
+                    ),
+                    "location": brief.location,
+                    "coordinates": brief.coordinates,
+                    "navigation_status": navigational_status(
+                        position.navigational_status
+                    ),
+                    "position_age": brief.age,
+                    "seattle_offset": brief.local_time.split(" ", 1)[1],
+                    "position_timestamp": position.position_timestamp.isoformat(),
+                }
+            )
+        return {
+            "generated_at": generated_at.isoformat(),
+            "source": "fleet-tracker-cache",
+            "vessels": vessels,
+        }
+
     @app.get("/health")
     def health():
         now = _aware_utc(clock())
@@ -363,3 +427,10 @@ def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _is_loopback(host: str) -> bool:
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
