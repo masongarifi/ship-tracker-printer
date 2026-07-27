@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from contextlib import suppress
 import logging
-import re
 from typing import Any
 
 from .base import PrinterBackend
@@ -13,20 +12,6 @@ TM_L90_FEED_12_LINES = b"\x1b\x64\x0c"
 TM_L90_PARTIAL_CUT = b"\x1d\x56\x01"
 TM_L90_FINAL_SEQUENCE = TM_L90_FEED_12_LINES + TM_L90_PARTIAL_CUT
 LOGGER = logging.getLogger(__name__)
-SHIP_BOUNDARY = re.compile(
-    r"\n\n(?=(?:[^\n]+\n=+\n\n)?[^\n]+\n─+\n)"
-)
-PRINTER_CHARACTER_REPLACEMENTS = str.maketrans(
-    {
-        "→": "->",
-        "‘": "'",
-        "’": "'",
-        "“": '"',
-        "”": '"',
-        "–": "-",
-        "—": "-",
-    }
-)
 
 
 class PrinterError(RuntimeError):
@@ -53,7 +38,7 @@ class EpsonUsbPrinter(PrinterBackend):
         printer = self._connect()
         try:
             try:
-                self._print_ship_blocks(printer, receipt)
+                printer.text(receipt)
             except Exception as exc:
                 raise _printer_error(exc, connected=True) from exc
 
@@ -74,14 +59,6 @@ class EpsonUsbPrinter(PrinterBackend):
     def print_test(self) -> str | None:
         """Print a hardware-only diagnostic without fleet or receipt formatting."""
         return self.print_and_finish("EPSON TM-L90 TEST\n")
-
-    def _print_ship_blocks(self, printer: Any, receipt: str) -> None:
-        chunks = _printer_chunks(receipt)
-        for index, chunk in enumerate(chunks):
-            has_following_ship = index < len(chunks) - 1
-            printer.text(_normalize_for_printer(chunk + ("\n" if has_following_ship else "")))
-            if has_following_ship:
-                printer.feed(1)
 
     def _write_final_sequence(self, printer: Any) -> None:
         device = printer.device
@@ -152,24 +129,6 @@ def _flush_usb_output(device: Any) -> None:
     flush = getattr(device, "flush", None)
     if flush is not None:
         flush()
-
-
-def _printer_chunks(receipt: str) -> list[str]:
-    """Split at ship boundaries so physical inter-ship feeds can be explicit."""
-    starts = [match.start() for match in SHIP_BOUNDARY.finditer(receipt)]
-    if len(starts) < 2:
-        return [receipt]
-
-    chunks = [receipt[: starts[1]]]
-    for index, start in enumerate(starts[1:], start=1):
-        end = starts[index + 1] if index + 1 < len(starts) else len(receipt)
-        chunks.append(receipt[start + 2 : end])
-    return chunks
-
-
-def _normalize_for_printer(value: str) -> str:
-    """Replace punctuation unsupported by the TM-L90 without changing shared output."""
-    return value.translate(PRINTER_CHARACTER_REPLACEMENTS)
 
 
 def _printer_error(exc: Exception, connected: bool) -> PrinterError:
