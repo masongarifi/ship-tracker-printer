@@ -138,7 +138,8 @@ def test_two_column_document_switches_to_small_font_for_ship_listings():
     receipt = PrinterReceipt(
         (
             ReceiptSegment("a", "HEADER\n"),
-            ReceiptSegment("b", "LEFT  RIGHT\n"),
+            ReceiptSegment("b", "LEFT    RIGHT\n", emphasized=True),
+            ReceiptSegment("b", "DETAIL  DETAIL\n"),
             ReceiptSegment("a", "FOOTER\n"),
         )
     )
@@ -147,9 +148,16 @@ def test_two_column_document_switches_to_small_font_for_ship_listings():
         printer_factory=factory_for(device)
     ).print_and_finish(receipt) is None
 
-    assert ("set", {"font": "a"}) in device.calls
-    assert ("set", {"font": "b"}) in device.calls
-    assert ("text", "LEFT  RIGHT\n") in device.calls
+    assert ("set", {"font": "a", "bold": False}) in device.calls
+    assert ("set", {"font": "b", "bold": True}) in device.calls
+    assert ("text", "LEFT    RIGHT\n") in device.calls
+    bold_index = device.calls.index(("set", {"font": "b", "bold": True}))
+    normal_index = device.calls.index(
+        ("set", {"font": "b", "bold": False}),
+        bold_index + 1,
+    )
+    assert normal_index > bold_index
+    assert device.calls[normal_index + 1] == ("text", "DETAIL  DETAIL\n")
 
 
 def test_unavailable_usb_printer_is_actionable():
