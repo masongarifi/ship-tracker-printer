@@ -147,6 +147,16 @@ def test_plain_text_report_matches_shared_renderer(tmp_path) -> None:
     assert response.text == expected
 
 
+def test_web_report_preserves_unicode_route_arrow(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(destination="TE COB > GB DVR"))
+
+    response = _client(cache).get("/hal-seabourn")
+
+    assert response.status_code == 200
+    assert "Te Cob → Dover, United Kingdom" in html.unescape(response.text)
+
+
 def test_health_reports_cache_summary(tmp_path) -> None:
     cache = PositionCache(tmp_path / "positions.sqlite3")
     cache.update(_position(received_at=NOW - timedelta(minutes=12)))

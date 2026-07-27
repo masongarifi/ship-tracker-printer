@@ -16,6 +16,9 @@ class RecordingPrinter:
     def text(self, receipt):
         self.calls.append(("text", receipt))
 
+    def feed(self, lines):
+        self.calls.append(("feed", lines))
+
     def close(self):
         self.calls.append(("close",))
 
@@ -55,6 +58,35 @@ def test_usb_backend_receives_generated_receipt_and_finishes(caplog):
     ]
     assert "1b 64 0c 1d 56 01" in caplog.text
     assert "USB OUT endpoint 0x01" in caplog.text
+
+
+def test_printer_explicitly_feeds_once_between_ship_blocks_and_normalizes_unicode():
+    device = RecordingPrinter()
+    receipt = (
+        "FLEET OPERATIONS BRIEF\n"
+        "════════\n\n"
+        "ROTTERDAM\n"
+        "─────────\n"
+        "Te Cob → Dover — “underway”\n"
+        "Updated 3 minutes ago\n\n"
+        "NIEUW STATENDAM\n"
+        "───────────────\n"
+        "Caribbean Sea\n"
+        "Updated 5 minutes ago\n"
+        "Latest available AIS positions\n"
+    )
+
+    EpsonUsbPrinter(printer_factory=factory_for(device)).print_receipt(receipt)
+
+    text_calls = [call for call in device.calls if call[0] == "text"]
+    assert len(text_calls) == 2
+    assert text_calls[0][1].endswith("Updated 3 minutes ago\n")
+    assert "Te Cob -> Dover - \"underway\"" in text_calls[0][1]
+    assert "→" not in "".join(call[1] for call in text_calls)
+    first_text_index = device.calls.index(text_calls[0])
+    second_text_index = device.calls.index(text_calls[1])
+    assert device.calls[first_text_index + 1] == ("feed", 1)
+    assert second_text_index == first_text_index + 2
 
 
 def test_cut_failure_preserves_printed_receipt_and_returns_warning():
