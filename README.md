@@ -337,9 +337,22 @@ fleet-receipt print --cached --fleet main
 
 `print` supports the same receipt inputs and controls as `preview`:
 `--fixtures`, `--live`, `--cached`, `--wait`, `--at`, `--width`, and `--fleet`.
-It sends the already-formatted text to USB device `04b8:0202`, feeds twelve blank
-lines, and sends the TM-L90 partial-cut `GS V` command. A failed cut is reported after
-the receipt has printed so it can be torn off manually.
+It sends the already-formatted text to USB device `04b8:0202` on USB OUT
+endpoint `0x01`, then writes `ESC d 12` (`1b 64 0c`) and partial-cut `GS V 1`
+(`1d 56 01`) directly. The synchronous USB writes complete before the connection
+is closed. A failed final sequence is reported after the receipt has printed so
+it can be torn off manually.
+
+To test only the printer transport, without loading fleet data or formatting a
+receipt:
+
+```bash
+fleet-receipt printer-test
+```
+
+This prints `EPSON TM-L90 TEST`, sends the same raw feed and cut bytes, flushes
+the transport, and then closes the USB interface. Temporary diagnostic logging
+shows the final raw bytes and selected OUT endpoint.
 
 On Linux, grant the service user access to the USB printer with a udev rule:
 

@@ -7,7 +7,11 @@ from pathlib import Path
 from .cache import PositionCache
 from .config import load_fleet, load_settings
 from .formatting import format_receipt
-from .printers.epson_usb import PrinterError, print_receipt as print_usb_receipt
+from .printers.epson_usb import (
+    PrinterError,
+    print_receipt as print_usb_receipt,
+    print_test as print_usb_test,
+)
 from .printers.file import FilePrinter
 from .printers.text import TextPrinter
 from .providers.aisstream import AISStreamError, AISStreamProvider
@@ -35,6 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
         "print", help="Print the receipt on the Epson TM-L90 USB printer"
     )
     _add_receipt_arguments(print_command)
+    subparsers.add_parser(
+        "printer-test",
+        help="Print a standalone Epson TM-L90 feed-and-cut diagnostic",
+    )
     listener = subparsers.add_parser(
         "listen", help="Continuously update the live AIS position cache"
     )
@@ -121,6 +129,11 @@ def main(argv=None) -> int:
                 cache.update_health,
                 initial_positions=cache.load(),
             )
+            return 0
+        if args.command == "printer-test":
+            warning = print_usb_test()
+            if warning:
+                print(f"fleet-receipt: {warning}", file=sys.stderr)
             return 0
         if args.command in {"preview", "print"}:
             receipt = _generate_receipt(args)

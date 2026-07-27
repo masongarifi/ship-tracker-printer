@@ -1,14 +1,17 @@
 from collections.abc import Callable
 from contextlib import suppress
+import logging
 from typing import Any
 
 from .base import PrinterBackend
 
 EPSON_VENDOR_ID = 0x04B8
 TM_L90_PRODUCT_ID = 0x0202
-FINAL_FEED_LINES = 12
-# Epson GS V Function B: feed zero additional motion units, then partial cut.
-TM_L90_PARTIAL_CUT = b"\x1d\x56\x42\x00"
+TM_L90_OUT_ENDPOINT = 0x01
+TM_L90_FEED_12_LINES = b"\x1b\x64\x0c"
+TM_L90_PARTIAL_CUT = b"\x1d\x56\x01"
+TM_L90_FINAL_SEQUENCE = TM_L90_FEED_12_LINES + TM_L90_PARTIAL_CUT
+LOGGER = logging.getLogger(__name__)
 
 
 class PrinterError(RuntimeError):
@@ -36,15 +39,14 @@ class EpsonUsbPrinter(PrinterBackend):
         try:
             try:
                 printer.text(receipt)
-                printer.feed(FINAL_FEED_LINES)
             except Exception as exc:
                 raise _printer_error(exc, connected=True) from exc
 
             try:
-                printer._raw(TM_L90_PARTIAL_CUT)
+                self._write_final_sequence(printer)
             except Exception as exc:
                 return (
-                    "receipt printed, but the TM-L90 partial cut failed; "
+                    "receipt printed, but the TM-L90 feed/cut sequence failed; "
                     f"tear off the cleared receipt manually. Details: {exc}"
                 )
             return None
@@ -53,6 +55,33 @@ class EpsonUsbPrinter(PrinterBackend):
             if close:
                 with suppress(Exception):
                     close()
+
+    def print_test(self) -> str | None:
+        """Print a hardware-only diagnostic without fleet or receipt formatting."""
+        return self.print_and_finish("EPSON TM-L90 TEST\n")
+
+    def _write_final_sequence(self, printer: Any) -> None:
+        device = printer.device
+        endpoint = int(printer.out_ep)
+        if endpoint & 0x80:
+            raise PrinterError(
+                f"configured USB endpoint 0x{endpoint:02x} is an IN endpoint; "
+                f"the Epson TM-L90 requires OUT endpoint 0x{TM_L90_OUT_ENDPOINT:02x}."
+            )
+        if endpoint != TM_L90_OUT_ENDPOINT:
+            raise PrinterError(
+                f"unexpected Epson TM-L90 USB OUT endpoint 0x{endpoint:02x}; "
+                f"expected 0x{TM_L90_OUT_ENDPOINT:02x}."
+            )
+
+        LOGGER.warning(
+            "TM-L90 final raw bytes on USB OUT endpoint 0x%02x: %s",
+            endpoint,
+            TM_L90_FINAL_SEQUENCE.hex(" "),
+        )
+        _usb_write(device, endpoint, TM_L90_FEED_12_LINES, printer.timeout)
+        _usb_write(device, endpoint, TM_L90_PARTIAL_CUT, printer.timeout)
+        _flush_usb_output(device)
 
     def _connect(self) -> Any:
         factory = self._printer_factory
@@ -67,7 +96,11 @@ class EpsonUsbPrinter(PrinterBackend):
             factory = Usb
 
         try:
-            return factory(self.vendor_id, self.product_id)
+            return factory(
+                self.vendor_id,
+                self.product_id,
+                out_ep=TM_L90_OUT_ENDPOINT,
+            )
         except Exception as exc:
             raise _printer_error(exc, connected=False) from exc
 
@@ -78,6 +111,24 @@ def print_receipt(
 ) -> str | None:
     """Print a preformatted receipt; reusable by the CLI and future button service."""
     return EpsonUsbPrinter(printer_factory=printer_factory).print_and_finish(receipt)
+
+
+def print_test(printer_factory: Callable[..., Any] | None = None) -> str | None:
+    """Run the standalone Epson USB feed-and-cut diagnostic."""
+    return EpsonUsbPrinter(printer_factory=printer_factory).print_test()
+
+
+def _usb_write(device: Any, endpoint: int, payload: bytes, timeout: Any) -> None:
+    written = device.write(endpoint, payload, timeout)
+    if written is not None and written != len(payload):
+        raise OSError(f"short USB write: sent {written} of {len(payload)} bytes")
+
+
+def _flush_usb_output(device: Any) -> None:
+    """Flush buffered test transports; PyUSB bulk writes are synchronous."""
+    flush = getattr(device, "flush", None)
+    if flush is not None:
+        flush()
 
 
 def _printer_error(exc: Exception, connected: bool) -> PrinterError:
