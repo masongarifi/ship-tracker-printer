@@ -7,6 +7,7 @@ from pathlib import Path
 from .cache import PositionCache
 from .config import load_fleet, load_settings
 from .formatting import format_receipt
+from .printers.epson_usb import PrinterError, print_receipt as print_usb_receipt
 from .printers.file import FilePrinter
 from .printers.text import TextPrinter
 from .providers.aisstream import AISStreamError, AISStreamProvider
@@ -24,33 +25,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fleet-receipt", description="Fleet position receipts")
     subparsers = parser.add_subparsers(dest="command", required=True)
     preview = subparsers.add_parser("preview", help="Print the exact receipt text to the terminal")
-    source = preview.add_mutually_exclusive_group(required=True)
-    source.add_argument("--fixtures", action="store_true", help="Use offline fixture AIS data")
-    source.add_argument("--live", action="store_true", help="Collect live AISstream.io positions")
-    source.add_argument("--cached", action="store_true", help="Use the on-disk live position cache")
-    preview.add_argument(
-        "--wait",
-        type=float,
-        default=60,
-        help="Seconds to collect live positions before printing (default: 60)",
-    )
-    preview.add_argument("--at", help="Report instant as ISO 8601, for deterministic previews")
-    preview.add_argument("--width", type=int, help="Override configured receipt width")
-    preview.add_argument(
-        "--fleet",
-        default="main",
-        help=(
-            "Fleet profile to display: main, celebrity, royal-caribbean, "
-            "carnival, princess, cunard, p-and-o, costa, aida, "
-            "msc, ncl, dcl, vv, oceania, regent, "
-            "or all (default: main)"
-        ),
-    )
+    _add_receipt_arguments(preview)
     preview.add_argument(
         "--output",
         type=Path,
         help="Write the exact receipt to a UTF-8 text file instead of the terminal",
     )
+    print_command = subparsers.add_parser(
+        "print", help="Print the receipt on the Epson TM-L90 USB printer"
+    )
+    _add_receipt_arguments(print_command)
     listener = subparsers.add_parser(
         "listen", help="Continuously update the live AIS position cache"
     )
@@ -69,6 +53,31 @@ def build_parser() -> argparse.ArgumentParser:
     web.add_argument("--host", default="0.0.0.0", help="Listen address (default: 0.0.0.0)")
     web.add_argument("--port", type=int, default=8000, help="Listen port (default: 8000)")
     return parser
+
+
+def _add_receipt_arguments(command: argparse.ArgumentParser) -> None:
+    source = command.add_mutually_exclusive_group(required=True)
+    source.add_argument("--fixtures", action="store_true", help="Use offline fixture AIS data")
+    source.add_argument("--live", action="store_true", help="Collect live AISstream.io positions")
+    source.add_argument("--cached", action="store_true", help="Use the on-disk live position cache")
+    command.add_argument(
+        "--wait",
+        type=float,
+        default=60,
+        help="Seconds to collect live positions before printing (default: 60)",
+    )
+    command.add_argument("--at", help="Report instant as ISO 8601, for deterministic output")
+    command.add_argument("--width", type=int, help="Override configured receipt width")
+    command.add_argument(
+        "--fleet",
+        default="main",
+        help=(
+            "Fleet profile to display: main, celebrity, royal-caribbean, "
+            "carnival, princess, cunard, p-and-o, costa, aida, "
+            "msc, ncl, dcl, vv, oceania, regent, "
+            "or all (default: main)"
+        ),
+    )
 
 
 def main(argv=None) -> int:
@@ -113,37 +122,13 @@ def main(argv=None) -> int:
                 initial_positions=cache.load(),
             )
             return 0
-        if args.command == "preview":
-            generated_at = _datetime(args.at) if args.at else datetime.now(timezone.utc)
-            if args.cached:
-                cache = PositionCache()
-                receipt = render_cached_report(
-                    cache,
-                    generated_at=generated_at,
-                    width=args.width,
-                    fleet_profile=args.fleet,
-                )
-            else:
-                fleet = load_fleet(profile=args.fleet)
-                settings = load_settings()
-                provider = (
-                    AISStreamProvider(timeout_seconds=args.wait)
-                    if args.live
-                    else FixturePositionProvider()
-                )
-                positions = provider.fetch_positions(fleet.vessels)
-                feed_health = {
-                    "source": "Terrestrial" if args.live else "Fixture",
-                    "status": "connected",
-                }
-                receipt = format_receipt(
-                    fleet,
-                    positions,
-                    generated_at,
-                    width=args.width or int(settings["receipt_width"]),
-                    stale_after_hours=float(settings["stale_after_hours"]),
-                    feed_health=feed_health,
-                )
+        if args.command in {"preview", "print"}:
+            receipt = _generate_receipt(args)
+            if args.command == "print":
+                warning = print_usb_receipt(receipt)
+                if warning:
+                    print(f"fleet-receipt: {warning}", file=sys.stderr)
+                return 0
             printer = FilePrinter(args.output) if args.output else TextPrinter()
             printer.print_receipt(receipt)
             if args.output:
@@ -152,7 +137,7 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         print("Listener stopped.", file=sys.stderr)
         return 130
-    except (AISStreamError, OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+    except (PrinterError, AISStreamError, OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(f"fleet-receipt: {exc}", file=sys.stderr)
         return 2
     return 1
@@ -163,6 +148,38 @@ def _datetime(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise ValueError("--at must include a timezone, such as Z or -07:00")
     return parsed
+
+
+def _generate_receipt(args: argparse.Namespace) -> str:
+    """Build the canonical receipt used unchanged by preview and physical printing."""
+    generated_at = _datetime(args.at) if args.at else datetime.now(timezone.utc)
+    if args.cached:
+        return render_cached_report(
+            PositionCache(),
+            generated_at=generated_at,
+            width=args.width,
+            fleet_profile=args.fleet,
+        )
+
+    fleet = load_fleet(profile=args.fleet)
+    settings = load_settings()
+    provider = (
+        AISStreamProvider(timeout_seconds=args.wait)
+        if args.live
+        else FixturePositionProvider()
+    )
+    positions = provider.fetch_positions(fleet.vessels)
+    return format_receipt(
+        fleet,
+        positions,
+        generated_at,
+        width=args.width or int(settings["receipt_width"]),
+        stale_after_hours=float(settings["stale_after_hours"]),
+        feed_health={
+            "source": "Terrestrial" if args.live else "Fixture",
+            "status": "connected",
+        },
+    )
 
 
 if __name__ == "__main__":

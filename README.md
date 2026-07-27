@@ -325,6 +325,37 @@ python3 -m fleet_receipt preview --fixtures --at 2026-07-22T23:18:00Z --output w
 
 The command creates missing parent directories and never contacts printer hardware.
 
+## Print on the Epson TM-L90
+
+Connect and power on the TM-L90 with its UB-U05 USB interface, then print the
+same canonical receipt produced by preview:
+
+```bash
+fleet-receipt print --cached
+fleet-receipt print --cached --fleet main
+```
+
+`print` supports the same receipt inputs and controls as `preview`:
+`--fixtures`, `--live`, `--cached`, `--wait`, `--at`, `--width`, and `--fleet`.
+It sends the already-formatted text to USB device `04b8:0202`, feeds six blank
+lines, and requests a full cut. A failed or unsupported cut is reported after
+the receipt has printed so it can be torn off manually.
+
+On Linux, grant the service user access to the USB printer with a udev rule:
+
+```bash
+echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="04b8", ATTR{idProduct}=="0202", MODE="0660", GROUP="lp"' | sudo tee /etc/udev/rules.d/99-epson-tm-l90.rules
+sudo usermod -aG lp "$USER"
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Reconnect the printer and start a new login session after adding the group.
+On Windows, the Python USB stack also requires a compatible libusb driver for
+the UB-U05 interface. Missing dependencies, an absent printer, USB permission
+problems, and failed jobs produce actionable errors without changing preview
+or the cached receipt.
+
 ## Configure the fleet
 
 Edit `config/fleet.yaml`. It is JSON-compatible YAML so Phase 1 can run even before PyYAML is installed. Each entry supports:
@@ -392,7 +423,8 @@ Then set `MARINETRAFFIC_API_KEY` locally. `.env` is ignored by Git. Never place 
 
 ## Printer configuration
 
-Phase 1 has only the safe text backend. On the target Raspberry Pi, Phase 2 will first inspect:
+The physical backend uses `python-escpos` and raw USB ESC/POS for the Epson
+TM-L90 (`04b8:0202`). To inspect a target Raspberry Pi installation:
 
 ```bash
 uname -a
@@ -405,7 +437,7 @@ systemctl status cups --no-pager
 journalctl -u cups --no-pager -n 100
 ```
 
-Those results will determine whether to use CUPS, raw network ESC/POS, or raw USB ESC/POS. Do not send a test receipt until the device and backend have been confirmed.
+`lsusb` should list the Epson device before running `fleet-receipt print`.
 
 ## GPIO and systemd
 
