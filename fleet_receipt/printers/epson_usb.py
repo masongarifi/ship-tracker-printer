@@ -41,7 +41,10 @@ class EpsonUsbPrinter(PrinterBackend):
             try:
                 if isinstance(receipt, PrinterReceipt):
                     for segment in receipt.segments:
-                        printer.set(font=segment.font)
+                        printer.set(
+                            font=segment.font,
+                            bold=segment.emphasized,
+                        )
                         printer.text(segment.text)
                 else:
                     printer.text(receipt)

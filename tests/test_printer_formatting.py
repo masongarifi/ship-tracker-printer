@@ -21,6 +21,18 @@ def test_two_column_ship_blocks_are_side_by_side(fleet, positions, report_time):
     assert "KONINGSDAM" in eurodam_line
     assert "  " in eurodam_line
     assert any(segment.font == FONT_B for segment in receipt.segments)
+    assert any(
+        segment.font == FONT_B
+        and segment.emphasized
+        and "EURODAM" in segment.text
+        for segment in receipt.segments
+    )
+    name_segment_index = next(
+        index
+        for index, segment in enumerate(receipt.segments)
+        if segment.emphasized and "EURODAM" in segment.text
+    )
+    assert receipt.segments[name_segment_index + 1].emphasized is False
 
 
 def test_column_wrapping_never_spills_into_other_column(
@@ -48,7 +60,7 @@ def test_column_wrapping_never_spills_into_other_column(
     assert listing_lines
     assert all(len(line) <= 56 for line in listing_lines)
     assert all(
-        line.ljust(56)[27:29] == " " * COLUMN_GAP for line in listing_lines
+        line.ljust(56)[26:30] == " " * COLUMN_GAP for line in listing_lines
     )
 
 
@@ -76,8 +88,8 @@ def test_odd_ship_count_leaves_final_right_column_empty(
         line for line in receipt.text.splitlines() if line.startswith(final_name)
     )
 
-    assert final_line[:27].strip() == final_name
-    assert final_line[29:].strip() == ""
+    assert final_line[:26].strip() == final_name
+    assert final_line[30:].strip() == ""
 
 
 def test_two_column_printer_output_is_ascii_only(fleet, positions, report_time):
@@ -86,11 +98,57 @@ def test_two_column_printer_output_is_ascii_only(fleet, positions, report_time):
     )
 
     assert receipt.text.isascii()
-    assert ">" in receipt.text
+    assert "DEST " in receipt.text
     assert "@" in receipt.text
-    assert "*" in receipt.text
     assert "→" not in receipt.text
     assert "°" not in receipt.text
+
+
+def test_movement_destination_and_age_are_compact(
+    fleet, positions, report_time
+):
+    receipt = format_printer_receipt(
+        fleet, positions, report_time, width=42, two_column=True
+    )
+
+    assert "UNDERWAY|320 deg|14.2 kt" in receipt.text
+    assert "DEST Ketchikan" in receipt.text
+    assert "AIS 8 min ago" in receipt.text
+    assert "! AIS 11 hr ago" in receipt.text
+    assert "CRS " not in receipt.text
+    assert "Updated " not in receipt.text
+
+
+def test_coordinates_stay_on_one_ascii_line(fleet, positions, report_time):
+    receipt = format_printer_receipt(
+        fleet, positions, report_time, width=42, two_column=True
+    )
+
+    coordinate_line = next(
+        line
+        for line in receipt.text.splitlines()
+        if "58 18.1N | 134 25.2W" in line
+    )
+    assert "52 00.0N | 128 00.0W" in coordinate_line
+    assert coordinate_line.isascii()
+
+
+def test_full_width_sections_remain_font_a(fleet, positions, report_time):
+    receipt = format_printer_receipt(
+        fleet, positions, report_time, width=42, two_column=True
+    )
+    full_width_text = "".join(
+        segment.text for segment in receipt.segments if segment.font == "a"
+    )
+
+    assert "FLEET OPERATIONS BRIEF" in full_width_text
+    assert "HAL Reporting: 11 / 11" in full_width_text
+    assert "AIS Source: Terrestrial" in full_width_text
+    assert "HOLLAND AMERICA LINE" in full_width_text
+    assert "SEABOURN" in full_width_text
+    assert "Latest available AIS positions" in full_width_text
+    assert "=" * 42 in full_width_text
+    assert "-" * 42 in full_width_text
 
 
 def test_disabled_setting_returns_existing_single_column_receipt(

@@ -13,7 +13,7 @@ from .models import FleetData, Position
 
 FONT_A = "a"
 FONT_B = "b"
-COLUMN_GAP = 2
+COLUMN_GAP = 4
 CARNIVAL_CORPORATION_LINES = {
     "Carnival Cruise Line",
     "Princess Cruises",
@@ -28,6 +28,7 @@ CARNIVAL_CORPORATION_LINES = {
 class ReceiptSegment:
     font: str
     text: str
+    emphasized: bool = False
 
 
 @dataclass(frozen=True)
@@ -99,13 +100,10 @@ def format_printer_receipt(
         segments.append(
             ReceiptSegment(FONT_A, _lines(["", heading, "-" * width]))
         )
-        segments.append(
-            ReceiptSegment(
-                FONT_B,
-                _format_pairs(
-                    [_ship_slots(vessel, column_width) for vessel in vessels],
-                    column_width,
-                ),
+        segments.extend(
+            _format_pairs(
+                [_ship_slots(vessel, column_width) for vessel in vessels],
+                column_width,
             )
         )
 
@@ -122,16 +120,13 @@ def format_printer_receipt(
                 ),
             )
         )
-        segments.append(
-            ReceiptSegment(
-                FONT_B,
-                _format_pairs(
-                    [
-                        _missing_slots(name, column_width)
-                        for name in briefing.missing_names
-                    ],
-                    column_width,
-                ),
+        segments.extend(
+            _format_pairs(
+                [
+                    _missing_slots(name, column_width)
+                    for name in briefing.missing_names
+                ],
+                column_width,
             )
         )
         segments.append(
@@ -214,21 +209,21 @@ def _available_sections(
 
 
 def _ship_slots(vessel: VesselBrief, width: int) -> list[list[str]]:
-    movement, speed = _movement_lines(vessel.movement)
-    destination, eta = _voyage_lines(vessel.voyage)
-    age_marker = "!" if vessel.age_heading.casefold().startswith("last") else "*"
-    age_label = (
-        f"{age_marker} {vessel.age_heading} {vessel.age}"
-    )
+    movement = _movement_line(vessel.movement, width)
+    destination, eta = _voyage_lines(vessel.voyage, width)
+    stale = vessel.age_heading.casefold().startswith("last")
+    age_label = f"{'! ' if stale else ''}AIS {_compact_age(vessel.age)}"
     location = [f"@ {vessel.location}"]
     if vessel.landmark:
         location.append(f"@ {vessel.landmark}")
+    coordinates = _coordinates(vessel.coordinates)
+    if len(coordinates) > width:
+        raise ValueError("Compact coordinates exceed printer column width")
     return [
         _wrap_ascii(vessel.name, width),
         _wrap_ascii(" | ".join(location), width),
-        _wrap_ascii(_coordinates(vessel.coordinates), width),
+        [coordinates],
         _wrap_ascii(movement, width),
-        _wrap_ascii(speed, width) if speed else [""],
         _wrap_ascii(destination, width) if destination else [""],
         _wrap_ascii(eta, width) if eta else [""],
         _wrap_ascii(f"UTC {vessel.utc_time}", width),
@@ -245,7 +240,7 @@ def _missing_slots(name: str, width: int) -> list[list[str]]:
     ]
 
 
-def _movement_lines(value: str) -> tuple[str, str]:
+def _movement_line(value: str, width: int) -> str:
     cleaned = _ascii(value)
     match = re.match(
         r"^(.*?)\s+CRS\s+(\d{1,3})\s+at\s+([0-9.]+)\s+kts?$",
@@ -253,19 +248,27 @@ def _movement_lines(value: str) -> tuple[str, str]:
         re.IGNORECASE,
     )
     if match:
+        spaced = (
+            f"{match.group(1).upper()} | {int(match.group(2)):03d} deg"
+            f" | {match.group(3)} kt"
+        )
+        if len(spaced) <= width:
+            return spaced
         return (
-            f"{match.group(1).upper()} | CRS {int(match.group(2)):03d}",
-            f"{match.group(3)} kt",
+            f"{match.group(1).upper()}|{int(match.group(2)):03d} deg"
+            f"|{match.group(3)} kt"
         )
     speed_match = re.match(
         r"^(.*?)\s+at\s+([0-9.]+)\s+kts?$", cleaned, re.IGNORECASE
     )
     if speed_match:
-        return speed_match.group(1).upper(), f"{speed_match.group(2)} kt"
-    return cleaned.upper(), ""
+        return (
+            f"{speed_match.group(1).upper()} | {speed_match.group(2)} kt"
+        )
+    return cleaned.upper()
 
 
-def _voyage_lines(value: Optional[str]) -> tuple[str, str]:
+def _voyage_lines(value: Optional[str], width: int) -> tuple[str, str]:
     if not value:
         return "", ""
     lines = [_ascii(line) for line in value.splitlines() if line.strip()]
@@ -273,7 +276,17 @@ def _voyage_lines(value: Optional[str]) -> tuple[str, str]:
         return "", ""
     destination = lines[0]
     if destination.startswith("Destination "):
-        destination = f"> {destination.removeprefix('Destination ')}"
+        destination = destination.removeprefix("Destination ")
+    elif ">" in destination:
+        destination = destination.rsplit(">", 1)[-1].strip()
+    destination = destination.split(",", 1)[0].strip()
+    destination = " ".join(destination.split())
+    destination = textwrap.shorten(
+        destination,
+        width=max(4, width - len("DEST ")),
+        placeholder="...",
+    )
+    destination = f"DEST {destination}" if destination else ""
     return destination, lines[1] if len(lines) > 1 else ""
 
 
@@ -288,8 +301,10 @@ def _coordinates(value: str) -> str:
     return f"{match.group(1)} | {match.group(2)}" if match else cleaned
 
 
-def _format_pairs(blocks: Sequence[list[list[str]]], width: int) -> str:
-    output: list[str] = []
+def _format_pairs(
+    blocks: Sequence[list[list[str]]], width: int
+) -> list[ReceiptSegment]:
+    output: list[ReceiptSegment] = []
     for index in range(0, len(blocks), 2):
         left = blocks[index]
         right = blocks[index + 1] if index + 1 < len(blocks) else []
@@ -307,13 +322,55 @@ def _format_pairs(blocks: Sequence[list[list[str]]], width: int) -> str:
                 right_line = (
                     right_lines[line_index] if line_index < len(right_lines) else ""
                 )
-                output.append(
-                    left_line.ljust(width)
-                    + (" " * COLUMN_GAP)
-                    + right_line.ljust(width)
+                _append_segment(
+                    output,
+                    ReceiptSegment(
+                        FONT_B,
+                        _paired_line(left_line, right_line, width),
+                        emphasized=slot_index == 0,
+                    ),
                 )
-        output.append("")
-    return _lines(output)
+        _append_segment(output, ReceiptSegment(FONT_B, "\n"))
+    return output
+
+
+def _paired_line(left: str, right: str, width: int) -> str:
+    line = (
+        left.ljust(width)
+        + (" " * COLUMN_GAP)
+        + right.ljust(width)
+    )
+    return _ascii(line, strip=False).rstrip() + "\n"
+
+
+def _append_segment(
+    segments: list[ReceiptSegment], segment: ReceiptSegment
+) -> None:
+    if (
+        segments
+        and segments[-1].font == segment.font
+        and segments[-1].emphasized == segment.emphasized
+    ):
+        previous = segments[-1]
+        segments[-1] = ReceiptSegment(
+            previous.font,
+            previous.text + segment.text,
+            previous.emphasized,
+        )
+    else:
+        segments.append(segment)
+
+
+def _compact_age(value: str) -> str:
+    cleaned = _ascii(value)
+    replacements = (
+        (r"\bminutes?\b", "min"),
+        (r"\bhours?\b", "hr"),
+        (r"\bdays?\b", lambda match: "day" if match.group(0) == "day" else "days"),
+    )
+    for pattern, replacement in replacements:
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    return cleaned
 
 
 def _wrap_ascii(value: str, width: int) -> list[str]:
