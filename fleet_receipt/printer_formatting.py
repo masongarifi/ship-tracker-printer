@@ -28,6 +28,58 @@ CARNIVAL_CORPORATION_LINES = {
     "Costa Cruises",
     "AIDA Cruises",
 }
+US_STATE_ABBREVIATIONS = {
+    "Alabama": "AL",
+    "Alaska": "AK",
+    "Arizona": "AZ",
+    "Arkansas": "AR",
+    "California": "CA",
+    "Colorado": "CO",
+    "Connecticut": "CT",
+    "Delaware": "DE",
+    "Florida": "FL",
+    "Georgia": "GA",
+    "Hawaii": "HI",
+    "Idaho": "ID",
+    "Illinois": "IL",
+    "Indiana": "IN",
+    "Iowa": "IA",
+    "Kansas": "KS",
+    "Kentucky": "KY",
+    "Louisiana": "LA",
+    "Maine": "ME",
+    "Maryland": "MD",
+    "Massachusetts": "MA",
+    "Michigan": "MI",
+    "Minnesota": "MN",
+    "Mississippi": "MS",
+    "Missouri": "MO",
+    "Montana": "MT",
+    "Nebraska": "NE",
+    "Nevada": "NV",
+    "New Hampshire": "NH",
+    "New Jersey": "NJ",
+    "New Mexico": "NM",
+    "New York": "NY",
+    "North Carolina": "NC",
+    "North Dakota": "ND",
+    "Ohio": "OH",
+    "Oklahoma": "OK",
+    "Oregon": "OR",
+    "Pennsylvania": "PA",
+    "Rhode Island": "RI",
+    "South Carolina": "SC",
+    "South Dakota": "SD",
+    "Tennessee": "TN",
+    "Texas": "TX",
+    "Utah": "UT",
+    "Vermont": "VT",
+    "Virginia": "VA",
+    "Washington": "WA",
+    "West Virginia": "WV",
+    "Wisconsin": "WI",
+    "Wyoming": "WY",
+}
 
 
 @dataclass(frozen=True)
@@ -428,6 +480,30 @@ def _compact_age(value: str) -> str:
 def _receipt_location(value: str) -> str:
     """Return printer-safe location text with an indivisible rounded nm token."""
     cleaned = _ascii(value)
+    if cleaned.casefold() == "same as seattle":
+        return "Seattle"
+
+    state_names = "|".join(
+        re.escape(name)
+        for name in sorted(
+            US_STATE_ABBREVIATIONS,
+            key=len,
+            reverse=True,
+        )
+    )
+
+    def abbreviated_state(match: re.Match[str]) -> str:
+        return (
+            match.group("prefix")
+            + US_STATE_ABBREVIATIONS[match.group("state")]
+        )
+
+    cleaned = re.sub(
+        rf"(?P<prefix>,\s+|\bof\s+)"
+        rf"(?P<state>{state_names})\b",
+        abbreviated_state,
+        cleaned,
+    )
 
     def rounded_distance(match: re.Match[str]) -> str:
         nautical_miles = Decimal(match.group(1)).quantize(
