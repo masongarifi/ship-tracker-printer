@@ -6,6 +6,9 @@ from .base import PrinterBackend
 
 EPSON_VENDOR_ID = 0x04B8
 TM_L90_PRODUCT_ID = 0x0202
+FINAL_FEED_LINES = 12
+# Epson GS V Function B: feed zero additional motion units, then partial cut.
+TM_L90_PARTIAL_CUT = b"\x1d\x56\x42\x00"
 
 
 class PrinterError(RuntimeError):
@@ -33,15 +36,15 @@ class EpsonUsbPrinter(PrinterBackend):
         try:
             try:
                 printer.text(receipt)
-                printer.feed(6)
+                printer.feed(FINAL_FEED_LINES)
             except Exception as exc:
                 raise _printer_error(exc, connected=True) from exc
 
             try:
-                printer.cut(mode="FULL")
+                printer._raw(TM_L90_PARTIAL_CUT)
             except Exception as exc:
                 return (
-                    "receipt printed, but the full cut was not supported or failed; "
+                    "receipt printed, but the TM-L90 partial cut failed; "
                     f"tear off the cleared receipt manually. Details: {exc}"
                 )
             return None

@@ -88,6 +88,20 @@ def test_vessel_block_has_no_internal_blank_lines(fleet, positions, report_time)
     assert "\n\n" not in block.strip()
 
 
+def test_exactly_one_blank_line_separates_ship_entries(fleet, positions, report_time):
+    receipt = format_receipt(fleet, positions, report_time)
+    active_names = [
+        vessel.name.upper()
+        for vessel in fleet.vessels
+        if vessel.active and vessel.name.casefold() in positions
+    ]
+
+    for name in active_names[1:]:
+        heading = f"{name}\n{'─' * len(name)}"
+        assert receipt.count(f"\n\n{heading}") == 1
+        assert f"\n\n\n{heading}" not in receipt
+
+
 def test_route_and_eta_are_friendly_on_receipt(fleet, positions, report_time):
     changed = dict(positions)
     changed["koningsdam"] = replace(

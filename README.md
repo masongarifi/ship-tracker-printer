@@ -337,8 +337,8 @@ fleet-receipt print --cached --fleet main
 
 `print` supports the same receipt inputs and controls as `preview`:
 `--fixtures`, `--live`, `--cached`, `--wait`, `--at`, `--width`, and `--fleet`.
-It sends the already-formatted text to USB device `04b8:0202`, feeds six blank
-lines, and requests a full cut. A failed or unsupported cut is reported after
+It sends the already-formatted text to USB device `04b8:0202`, feeds twelve blank
+lines, and sends the TM-L90 partial-cut `GS V` command. A failed cut is reported after
 the receipt has printed so it can be torn off manually.
 
 On Linux, grant the service user access to the USB printer with a udev rule:

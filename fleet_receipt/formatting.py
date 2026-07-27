@@ -47,7 +47,8 @@ def format_receipt(
         if group_by_fleet and vessel_line != current_line:
             _append_fleet_heading(lines, vessel_line or "Other", width)
             current_line = vessel_line
-        lines.extend(["", vessel.name, "─" * min(len(vessel.name), width)])
+        _append_single_blank_line(lines)
+        lines.extend([vessel.name, "─" * min(len(vessel.name), width)])
         _append_wrapped(lines, vessel.location, width)
         if vessel.landmark:
             _append_wrapped(lines, vessel.landmark, width)
@@ -117,6 +118,13 @@ def _append_wrapped(lines: List[str], value: str, width: int) -> None:
 
 def _append_fleet_heading(lines: List[str], name: str, width: int) -> None:
     lines.extend(["", name.upper(), "=" * min(len(name), width)])
+
+
+def _append_single_blank_line(lines: List[str]) -> None:
+    """Separate sections with exactly one blank line."""
+    while lines and lines[-1] == "":
+        lines.pop()
+    lines.append("")
 
 
 def _wrap_existing(lines: Iterable[str], width: int) -> Iterable[str]:

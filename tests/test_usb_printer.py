@@ -16,8 +16,8 @@ class RecordingPrinter:
     def feed(self, lines):
         self.calls.append(("feed", lines))
 
-    def cut(self, mode):
-        self.calls.append(("cut", mode))
+    def _raw(self, payload):
+        self.calls.append(("raw", payload))
 
     def close(self):
         self.calls.append(("close",))
@@ -30,8 +30,29 @@ def test_usb_backend_receives_generated_receipt_and_finishes():
     assert backend.print_and_finish("EXACT RECEIPT\n") is None
     assert device.calls == [
         ("text", "EXACT RECEIPT\n"),
-        ("feed", 6),
-        ("cut", "FULL"),
+        ("feed", 12),
+        ("raw", b"\x1d\x56\x42\x00"),
+        ("close",),
+    ]
+
+
+def test_cut_failure_preserves_printed_receipt_and_returns_warning():
+    device = RecordingPrinter()
+
+    def failed_cut(payload):
+        device.calls.append(("raw", payload))
+        raise OSError("cutter unavailable")
+
+    device._raw = failed_cut
+    warning = EpsonUsbPrinter(
+        printer_factory=lambda vendor, product: device
+    ).print_and_finish("EXACT RECEIPT\n")
+
+    assert "receipt printed" in warning
+    assert device.calls == [
+        ("text", "EXACT RECEIPT\n"),
+        ("feed", 12),
+        ("raw", b"\x1d\x56\x42\x00"),
         ("close",),
     ]
 
