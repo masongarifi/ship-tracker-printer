@@ -6,7 +6,6 @@ from pathlib import Path
 
 from .cache import PositionCache
 from .config import load_fleet, load_settings
-from .formatting import format_receipt
 from .printers.epson_usb import (
     PrinterError,
     print_receipt as print_usb_receipt,
@@ -14,9 +13,13 @@ from .printers.epson_usb import (
 )
 from .printers.file import FilePrinter
 from .printers.text import TextPrinter
+from .printer_formatting import (
+    PrinterReceipt,
+    format_printer_receipt,
+    render_cached_printer_report,
+)
 from .providers.aisstream import AISStreamError, AISStreamProvider
 from .providers.fixtures import FixturePositionProvider
-from .reporting import render_cached_report
 from .unlocode import (
     UNLocodeSyncError,
     database_status,
@@ -143,7 +146,7 @@ def main(argv=None) -> int:
                     print(f"fleet-receipt: {warning}", file=sys.stderr)
                 return 0
             printer = FilePrinter(args.output) if args.output else TextPrinter()
-            printer.print_receipt(receipt)
+            printer.print_receipt(receipt.text)
             if args.output:
                 print(f"Receipt written to {args.output}")
             return 0
@@ -163,11 +166,11 @@ def _datetime(value: str) -> datetime:
     return parsed
 
 
-def _generate_receipt(args: argparse.Namespace) -> str:
+def _generate_receipt(args: argparse.Namespace) -> PrinterReceipt:
     """Build the canonical receipt used unchanged by preview and physical printing."""
     generated_at = _datetime(args.at) if args.at else datetime.now(timezone.utc)
     if args.cached:
-        return render_cached_report(
+        return render_cached_printer_report(
             PositionCache(),
             generated_at=generated_at,
             width=args.width,
@@ -182,7 +185,7 @@ def _generate_receipt(args: argparse.Namespace) -> str:
         else FixturePositionProvider()
     )
     positions = provider.fetch_positions(fleet.vessels)
-    return format_receipt(
+    return format_printer_receipt(
         fleet,
         positions,
         generated_at,
@@ -192,6 +195,8 @@ def _generate_receipt(args: argparse.Namespace) -> str:
             "source": "Terrestrial" if args.live else "Fixture",
             "status": "connected",
         },
+        group_by_fleet=args.fleet.casefold() == "all",
+        two_column=bool(settings.get("TWO_COLUMN_PRINT", False)),
     )
 
 

@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .base import PrinterBackend
+from ..printer_formatting import PrinterReceipt
 
 EPSON_VENDOR_ID = 0x04B8
 TM_L90_PRODUCT_ID = 0x0202
@@ -34,11 +35,16 @@ class EpsonUsbPrinter(PrinterBackend):
     def print_receipt(self, receipt: str) -> None:
         self.print_and_finish(receipt)
 
-    def print_and_finish(self, receipt: str) -> str | None:
+    def print_and_finish(self, receipt: str | PrinterReceipt) -> str | None:
         printer = self._connect()
         try:
             try:
-                printer.text(receipt)
+                if isinstance(receipt, PrinterReceipt):
+                    for segment in receipt.segments:
+                        printer.set(font=segment.font)
+                        printer.text(segment.text)
+                else:
+                    printer.text(receipt)
             except Exception as exc:
                 raise _printer_error(exc, connected=True) from exc
 
@@ -106,7 +112,7 @@ class EpsonUsbPrinter(PrinterBackend):
 
 
 def print_receipt(
-    receipt: str,
+    receipt: str | PrinterReceipt,
     printer_factory: Callable[..., Any] | None = None,
 ) -> str | None:
     """Print a preformatted receipt; reusable by the CLI and future button service."""

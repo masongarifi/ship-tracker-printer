@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fleet_receipt.cli import main
 from fleet_receipt.config import load_fleet
-from fleet_receipt.formatting import format_receipt
+from fleet_receipt.printer_formatting import format_printer_receipt
 from fleet_receipt.printers.file import FilePrinter
 from fleet_receipt.providers.fixtures import FixturePositionProvider
 
@@ -31,11 +31,12 @@ def test_preview_can_write_snapshot_to_file(tmp_path):
 
     fleet = load_fleet()
     positions = FixturePositionProvider().fetch_positions(fleet.vessels)
-    expected = format_receipt(
+    expected = format_printer_receipt(
         fleet,
         positions,
         datetime.fromisoformat("2026-07-22T23:18:00+00:00"),
         feed_health={"source": "Fixture", "status": "connected"},
-    )
+        two_column=True,
+    ).text
     assert result == 0
     assert output.read_text(encoding="utf-8") == expected

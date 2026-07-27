@@ -4,6 +4,7 @@ import pytest
 
 from fleet_receipt import cli
 from fleet_receipt.printers.epson_usb import EpsonUsbPrinter, PrinterError
+from fleet_receipt.printer_formatting import PrinterReceipt, ReceiptSegment
 
 
 class RecordingPrinter:
@@ -15,6 +16,9 @@ class RecordingPrinter:
 
     def text(self, receipt):
         self.calls.append(("text", receipt))
+
+    def set(self, **kwargs):
+        self.calls.append(("set", kwargs))
 
     def close(self):
         self.calls.append(("close",))
@@ -82,15 +86,15 @@ def test_cut_failure_preserves_printed_receipt_and_returns_warning():
     ]
 
 
-def test_print_command_selects_cached_data_and_uses_shared_generator(monkeypatch):
+def test_print_command_selects_cached_data_and_uses_printer_generator(monkeypatch):
     cached_calls = []
     printed = []
 
     def fake_cached(cache, generated_at, width, fleet_profile):
         cached_calls.append((width, fleet_profile))
-        return "CACHED RECEIPT\n"
+        return PrinterReceipt((ReceiptSegment("a", "CACHED RECEIPT\n"),))
 
-    monkeypatch.setattr(cli, "render_cached_report", fake_cached)
+    monkeypatch.setattr(cli, "render_cached_printer_report", fake_cached)
     monkeypatch.setattr(cli, "PositionCache", lambda: object())
     monkeypatch.setattr(cli, "print_usb_receipt", lambda receipt: printed.append(receipt))
 
@@ -98,7 +102,9 @@ def test_print_command_selects_cached_data_and_uses_shared_generator(monkeypatch
 
     assert result == 0
     assert cached_calls == [(42, "main")]
-    assert printed == ["CACHED RECEIPT\n"]
+    assert printed == [
+        PrinterReceipt((ReceiptSegment("a", "CACHED RECEIPT\n"),))
+    ]
 
 
 def test_preview_and_print_use_same_receipt_generator(monkeypatch):
@@ -108,7 +114,7 @@ def test_preview_and_print_use_same_receipt_generator(monkeypatch):
 
     def fake_generate(args: Namespace):
         generated.append(args.command)
-        return "SAME RECEIPT\n"
+        return PrinterReceipt((ReceiptSegment("a", "SAME RECEIPT\n"),))
 
     monkeypatch.setattr(cli, "_generate_receipt", fake_generate)
     monkeypatch.setattr(
@@ -122,7 +128,28 @@ def test_preview_and_print_use_same_receipt_generator(monkeypatch):
     assert cli.main(["print", "--cached"]) == 0
     assert generated == ["preview", "print"]
     assert previewed == ["SAME RECEIPT\n"]
-    assert printed == ["SAME RECEIPT\n"]
+    assert printed == [
+        PrinterReceipt((ReceiptSegment("a", "SAME RECEIPT\n"),))
+    ]
+
+
+def test_two_column_document_switches_to_small_font_for_ship_listings():
+    device = RecordingPrinter()
+    receipt = PrinterReceipt(
+        (
+            ReceiptSegment("a", "HEADER\n"),
+            ReceiptSegment("b", "LEFT  RIGHT\n"),
+            ReceiptSegment("a", "FOOTER\n"),
+        )
+    )
+
+    assert EpsonUsbPrinter(
+        printer_factory=factory_for(device)
+    ).print_and_finish(receipt) is None
+
+    assert ("set", {"font": "a"}) in device.calls
+    assert ("set", {"font": "b"}) in device.calls
+    assert ("text", "LEFT  RIGHT\n") in device.calls
 
 
 def test_unavailable_usb_printer_is_actionable():
@@ -151,7 +178,11 @@ def test_usb_permission_error_during_job_is_actionable():
 
 
 def test_print_command_handles_unavailable_printer(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "_generate_receipt", lambda args: "receipt")
+    monkeypatch.setattr(
+        cli,
+        "_generate_receipt",
+        lambda args: PrinterReceipt((ReceiptSegment("a", "receipt"),)),
+    )
 
     def unavailable(receipt):
         raise PrinterError("Epson TM-L90 USB printer 04b8:0202 was not found.")
