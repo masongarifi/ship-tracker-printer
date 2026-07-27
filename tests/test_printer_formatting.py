@@ -376,6 +376,21 @@ def test_receipt_locations_use_seattle_and_usps_abbreviations():
     )
 
 
+def test_receipt_local_time_uses_seattle_instead_of_same_as_seattle(
+    fleet, positions, report_time
+):
+    receipt = format_printer_receipt(
+        fleet,
+        positions,
+        report_time,
+        width=42,
+        two_column=True,
+    )
+
+    assert "Same as Seattle" not in receipt.text
+    assert "LOCAL 16:15 (Seattle)" in receipt.text
+
+
 def test_receipt_locations_leave_cities_countries_and_non_us_regions_unchanged():
     assert _receipt_location("Washington") == "Washington"
     assert _receipt_location("Vancouver, British Columbia") == (
