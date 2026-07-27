@@ -220,6 +220,28 @@ def test_full_width_sections_remain_font_a(fleet, positions, report_time):
     assert "-" * 42 in full_width_text
 
 
+def test_missing_ship_prints_only_no_ais_message(
+    fleet, positions, report_time
+):
+    changed = dict(positions)
+    changed.pop("volendam")
+    receipt = format_printer_receipt(
+        fleet,
+        changed,
+        report_time,
+        width=42,
+        two_column=True,
+    )
+    missing_section = receipt.text.split("NO RECENT AIS (1)", 1)[1]
+
+    assert "VOLENDAM" in missing_section
+    assert missing_section.count("[No AIS]") == 1
+    assert "No cached position" not in missing_section
+    assert "[NO AIS]" not in missing_section
+    assert "\n!" not in missing_section
+    assert "Likely outside terrestrial AIS coverage." not in missing_section
+
+
 def test_long_ship_name_wraps_without_crossing_columns(
     fleet, positions, report_time
 ):
