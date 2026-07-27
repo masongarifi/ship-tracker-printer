@@ -145,13 +145,6 @@ def format_printer_receipt(
                 column_width,
             )
         )
-        segments.append(
-            ReceiptSegment(
-                FONT_A,
-                _lines(_wrap_ascii(f"! {briefing.missing_reason}", width)),
-            )
-        )
-
     segments.append(
         ReceiptSegment(
             FONT_A,
@@ -261,8 +254,7 @@ def _ship_slots(
 def _missing_slots(name: str, width: int) -> list[list[str]]:
     return [
         _wrap_ascii(name, width),
-        ["[NO AIS]"],
-        ["! No cached position"],
+        ["[No AIS]"],
     ]
 
 
