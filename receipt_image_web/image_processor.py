@@ -45,6 +45,11 @@ def process_image(
     except (UnidentifiedImageError, OSError, SyntaxError) as exc:
         raise ImageProcessingError("The uploaded file is corrupted or is not a valid image.") from exc
 
+    # Receipt rolls have effectively unlimited length. Rotate landscape photos
+    # so their short edge uses the full paper width and the long edge runs down
+    # the roll, producing a substantially larger print.
+    if image.width > image.height:
+        image = image.rotate(90, expand=True)
     if options.rotation:
         image = image.rotate(options.rotation, expand=True)
     image = _resize(image, printer_width, options.fit_mode)
@@ -67,7 +72,7 @@ def _resize(image: Image.Image, width: int, mode: str) -> Image.Image:
             return image.crop((left, 0, left + width, image.height))
         scale = width / image.width
     else:
-        scale = min(1.0, width / image.width)
+        scale = width / image.width
     height = max(1, round(image.height * scale))
     output_width = width if mode != "original" or image.width > width else image.width
     return image.resize((output_width, height), Image.Resampling.LANCZOS)

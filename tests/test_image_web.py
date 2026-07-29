@@ -18,25 +18,32 @@ def image_bytes(fmt="PNG", size=(1200, 600)):
     return stream
 
 
-def test_processing_validates_contents_and_preserves_aspect_ratio(tmp_path):
+def test_landscape_photo_uses_short_edge_as_receipt_width(tmp_path):
     source = tmp_path / "wide.png"
     source.write_bytes(image_bytes().read())
     result = process_image(source, ImageOptions(), printer_width=576)
     assert result.mode == "1"
-    assert result.size == (576, 288)
+    assert result.size == (576, 1152)
 
     source.write_text("not an image", encoding="utf-8")
     with pytest.raises(ImageProcessingError, match="not a valid image"):
         process_image(source, ImageOptions())
 
 
-def test_crop_mode_center_crops_without_stretching(tmp_path):
+def test_portrait_photo_keeps_orientation_and_fills_width(tmp_path):
+    source = tmp_path / "portrait.png"
+    source.write_bytes(image_bytes(size=(300, 800)).read())
+    result = process_image(source, ImageOptions(), printer_width=576)
+    assert result.size == (576, 1536)
+
+
+def test_manual_rotation_still_applies_after_short_edge_orientation(tmp_path):
     source = tmp_path / "wide.png"
-    source.write_bytes(image_bytes(size=(800, 300)).read())
+    source.write_bytes(image_bytes(size=(1200, 600)).read())
     result = process_image(
-        source, ImageOptions(fit_mode="crop"), printer_width=576
+        source, ImageOptions(rotation=-90), printer_width=576
     )
-    assert result.size == (576, 300)
+    assert result.size == (576, 288)
 
 
 class RecordingService:
