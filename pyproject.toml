@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.139,<1",
+    "Flask>=3.1,<4",
     "Jinja2>=3.1,<4",
+    "Pillow>=11,<13",
     "python-escpos[usb]>=3.1,<4",
     "PyYAML>=6.0",
     "tzdata>=2025.2",
@@ -26,12 +28,17 @@ timezone = ["timezonefinder>=6.5"]
 fleet-receipt = "fleet_receipt.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["fleet_receipt*"]
+include = ["fleet_receipt*", "receipt_image_web*"]
 
 [tool.setuptools.package-data]
 fleet_receipt = [
     "static/*.js",
     "static/css/*.css",
+    "templates/*.html",
+]
+receipt_image_web = [
+    "static/*.js",
+    "static/*.css",
     "templates/*.html",
 ]
 

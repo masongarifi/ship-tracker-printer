@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Receipt Image Printer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<main>
+  <header><p class="eyebrow">EPSON TM-L90</p><h1>Receipt Image Printer</h1><p>Private local-network printing</p></header>
+  <form id="print-form">
+    <label id="drop-zone" class="drop-zone">
+      <input id="image" name="image" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+      <span class="drop-title">Drop an image here</span>
+      <span>or tap to choose a PNG, JPG, or WEBP</span>
+      <small>Maximum 20 MB</small>
+    </label>
+    <section class="preview-panel">
+      <div class="preview-heading"><h2>Print preview</h2><span id="preview-state">Choose an image</span></div>
+      <div class="paper"><img id="preview" alt="Processed black and white preview" hidden></div>
+    </section>
+    <fieldset>
+      <legend>Image</legend>
+      <label>Fit mode<select name="fit_mode"><option value="fit">Fit to width</option><option value="original">Original size</option><option value="crop">Crop to fill width</option></select></label>
+      <label class="range">Contrast <output id="contrast-value">1.15×</output><input name="contrast" type="range" min=".5" max="2" step=".05" value="1.15"></label>
+      <div class="checks"><label><input name="dither" type="checkbox" checked> Dithering</label><label><input name="invert" type="checkbox"> Invert</label></div>
+      <div class="rotation"><button type="button" data-rotate="-90">↶ Rotate left</button><button type="button" data-rotate="90">Rotate right ↷</button></div>
+      <input name="rotation" type="hidden" value="0">
+    </fieldset>
+    <fieldset>
+      <legend>Print</legend>
+      <div class="grid"><label>Copies<input name="copies" type="number" min="1" max="10" value="1"></label><label>Feed lines<input name="feed_lines" type="number" min="0" max="20" value="4"></label></div>
+      <label class="cut"><input name="cut" type="checkbox" checked> Cut after printing</label>
+    </fieldset>
+    <button class="primary" type="submit">Print Image</button>
+    <p id="message" role="status" aria-live="polite"></p>
+  </form>
+</main>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

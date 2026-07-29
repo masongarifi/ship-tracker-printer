@@ -1,0 +1,16 @@
+[Unit]
+Description=Local Epson receipt image web interface
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Ship-Tracker-Printer
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/Ship-Tracker-Printer/.venv/bin/python -m receipt_image_web.app
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

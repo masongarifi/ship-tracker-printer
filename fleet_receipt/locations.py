@@ -73,6 +73,7 @@ MAJOR_PORTS = (
     ("Seattle", "Washington", 47.6062, -122.3321, "America/Los_Angeles"),
     ("Cartagena", "Colombia", 10.3910, -75.4794, "America/Bogota"),
     ("Reykjavik", "Iceland", 64.1466, -21.9426, "Atlantic/Reykjavik"),
+    ("Stavanger", "Norway", 58.9700, 5.7331, "Europe/Oslo"),
     ("Barcelona", "Spain", 41.3525, 2.1589, "Europe/Madrid"),
     ("Piraeus", "Greece", 37.9420, 23.6465, "Europe/Athens"),
     ("Dover", "England", 51.1279, 1.3134, "Europe/London"),
@@ -143,6 +144,7 @@ def resolve_location(position: Position) -> Location:
     port_area = _containing_port(position.latitude, position.longitude)
     city_area = _containing_city(position.latitude, position.longitude)
     port = _nearest_port(position.latitude, position.longitude)
+    stationary_port_limit = _stationary_port_limit(position.navigational_status)
     if port_area is not None:
         timezone_name = port_area[6]
         kind = "port"
@@ -152,12 +154,30 @@ def resolve_location(position: Position) -> Location:
     elif port is not None and port[0] <= 9.26:
         timezone_name = port[5]
         kind = "port"
+    elif (
+        port is not None
+        and stationary_port_limit is not None
+        and port[0] <= stationary_port_limit
+    ):
+        _, port_name, region, _, _, timezone_name = port
+        name = f"{port_name}, {region}"
+        kind = "port"
     if timezone_name is None:
         area = _marine_area(position.latitude, position.longitude)
         timezone_name = area[5] if area is not None else None
     if timezone_name is None:
         timezone_name = position.broad_timezone
     return Location(name, timezone_name, kind, port[0] if kind == "port" and port else None)
+
+
+def _stationary_port_limit(status: str) -> Optional[float]:
+    """Return a conservative port/anchorage search radius in kilometres."""
+    normalized = " ".join(status.strip().casefold().split())
+    if normalized == "moored":
+        return 25.0
+    if normalized in {"anchored", "at anchor"}:
+        return 37.04  # 20 nautical miles covers normal outer anchorages.
+    return None
 
 
 def format_coordinates(latitude: float, longitude: float) -> str:

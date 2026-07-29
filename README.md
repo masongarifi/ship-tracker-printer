@@ -264,6 +264,84 @@ The server does not display API keys, environment variables, or cache paths.
 It has no login or TLS, so keep it on a trusted local network and do not expose
 port 8000 directly to the public internet.
 
+## Local receipt image printer
+
+The separate Flask image interface reuses the same Epson USB IDs, endpoint, and
+connection code as `fleet-receipt print`. It accepts PNG, JPG/JPEG, and WEBP,
+renders an approximate black-and-white preview, and provides fit, contrast,
+dithering, inversion, rotation, copy, feed, and cut controls.
+
+Start it manually from the project root:
+
+```bash
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+python -m receipt_image_web.app
+```
+
+It binds to `0.0.0.0:5000`. On another device on the same home network, open:
+
+```text
+http://receiptpi.local:5000/
+http://YOUR_PI_IP_ADDRESS:5000/
+```
+
+Find the Pi address with `hostname -I`. Test the service and printer visibility
+with:
+
+```bash
+curl http://127.0.0.1:5000/health
+```
+
+Uploads are limited to 20 MB, verified with Pillow, processed in temporary
+files, and deleted after previewing or printing. Jobs are serialized so two
+images cannot be sent simultaneously.
+
+**Security warning:** this interface intentionally has no login. Keep it on a
+trusted LAN. Do not port-forward port 5000 or expose this service to the public
+internet.
+
+### Install the boot service
+
+The committed unit assumes the normal Raspberry Pi user is `pi` and the checkout
+is `/home/pi/Ship-Tracker-Printer`. If your `whoami` or `pwd` differs, edit the
+`User`, `WorkingDirectory`, and `ExecStart` values before installing it.
+
+```bash
+cd /home/pi/Ship-Tracker-Printer
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+sudo cp receipt-image-web.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now receipt-image-web.service
+sudo systemctl status receipt-image-web.service --no-pager
+```
+
+Logs and service management:
+
+```bash
+sudo journalctl -u receipt-image-web.service -f
+sudo systemctl restart receipt-image-web.service
+sudo systemctl stop receipt-image-web.service
+```
+
+For future updates:
+
+```bash
+cd /home/pi/Ship-Tracker-Printer
+git pull --ff-only
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+sudo systemctl restart receipt-image-web.service
+sudo systemctl status receipt-image-web.service --no-pager
+```
+
+If `/health` says the printer is unavailable, verify `lsusb` contains
+`04b8:0202`, then use the existing udev commands in “Print on the Epson TM-L90.”
+Confirm the service user belongs to `lp` with `groups pi`, reconnect the printer,
+and restart the service. USB permission errors and cutter failures are logged
+with `journalctl` and returned as short, actionable browser messages.
+
 ## Create the Python environment
 
 On Raspberry Pi OS or Debian:

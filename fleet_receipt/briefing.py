@@ -12,7 +12,6 @@ from .formatting_helpers import (
 )
 from .locations import (
     format_coordinates,
-    get_friendly_location,
     get_nearest_landmark,
     resolve_location,
 )
@@ -89,7 +88,8 @@ def build_vessel_brief(
     generated_at: datetime,
     stale_after_hours: float,
 ) -> VesselBrief:
-    location = get_friendly_location(position.latitude, position.longitude)
+    resolved_location = resolve_location(position)
+    location = resolved_location.name
     landmark = get_nearest_landmark(position.latitude, position.longitude)
     if (
         landmark
@@ -98,7 +98,9 @@ def build_vessel_brief(
     ):
         landmark = None
 
-    estimate = estimate_local_time(position, resolve_location(position))
+    if resolved_location.kind == "port":
+        landmark = None
+    estimate = estimate_local_time(position, resolved_location)
     age, stale = format_position_age(
         position.position_timestamp, generated_at, stale_after_hours
     )

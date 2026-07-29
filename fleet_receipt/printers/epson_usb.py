@@ -69,6 +69,58 @@ class EpsonUsbPrinter(PrinterBackend):
         """Print a hardware-only diagnostic without fleet or receipt formatting."""
         return self.print_and_finish("EPSON TM-L90 TEST\n")
 
+    def check_available(self) -> None:
+        """Open and close the configured shared USB connection."""
+        printer = self._connect()
+        close = getattr(printer, "close", None)
+        if close:
+            with suppress(Exception):
+                close()
+
+    def print_image(
+        self,
+        image_path: str | Any,
+        *,
+        feed_lines: int = 4,
+        cut: bool = True,
+    ) -> str | None:
+        """Print a processed bitmap through the existing TM-L90 connection."""
+        printer = self._connect()
+        printed = False
+        try:
+            try:
+                printer.set(align="center")
+                printer.image(str(image_path), center=True)
+                printed = True
+                if feed_lines:
+                    self._write_bytes(printer, b"\x1b\x64" + bytes((feed_lines,)))
+                if cut:
+                    self._write_bytes(printer, TM_L90_PARTIAL_CUT)
+                _flush_usb_output(printer.device)
+                return None
+            except Exception as exc:
+                error = _printer_error(exc, connected=True)
+                if printed and cut:
+                    return (
+                        "Image printed, but feed or cutter operation failed; "
+                        f"tear it off manually. Details: {exc}"
+                    )
+                raise error from exc
+        finally:
+            close = getattr(printer, "close", None)
+            if close:
+                with suppress(Exception):
+                    close()
+
+    def _write_bytes(self, printer: Any, payload: bytes) -> None:
+        endpoint = int(printer.out_ep)
+        if endpoint != TM_L90_OUT_ENDPOINT or endpoint & 0x80:
+            raise PrinterError(
+                f"unexpected Epson TM-L90 USB OUT endpoint 0x{endpoint:02x}; "
+                f"expected 0x{TM_L90_OUT_ENDPOINT:02x}."
+            )
+        _usb_write(printer.device, endpoint, payload, printer.timeout)
+
     def _write_final_sequence(self, printer: Any) -> None:
         device = printer.device
         endpoint = int(printer.out_ep)
