@@ -411,13 +411,24 @@ def _format_pairs(
     for index in range(0, len(blocks), 2):
         left = blocks[index]
         right = blocks[index + 1] if index + 1 < len(blocks) else []
+        if not right:
+            _append_unpaired_block(output, left, width)
+            _append_segment(output, ReceiptSegment(FONT_B, "\n"))
+            continue
+
         slot_count = max(len(left), len(right))
         for slot_index in range(slot_count):
-            left_lines = left[slot_index] if slot_index < len(left) else [""]
-            right_lines = right[slot_index] if slot_index < len(right) else [""]
-            if not any(left_lines) and not any(right_lines):
-                continue
-            line_count = max(len(left_lines), len(right_lines))
+            left_lines = _column_slot_lines(
+                left[slot_index] if slot_index < len(left) else [""],
+                width,
+            )
+            right_lines = _column_slot_lines(
+                right[slot_index] if slot_index < len(right) else [""],
+                width,
+            )
+            # Every semantic slot reserves at least one physical line, even
+            # when both optional values are blank.
+            line_count = max(1, len(left_lines), len(right_lines))
             for line_index in range(line_count):
                 left_line = (
                     left_lines[line_index] if line_index < len(left_lines) else ""
@@ -429,7 +440,7 @@ def _format_pairs(
                     output,
                     ReceiptSegment(
                         FONT_B,
-                        _paired_line(left_line, right_line, width),
+                        _fixed_paired_line(left_line, right_line, width),
                         emphasized=slot_index == 0,
                     ),
                 )
@@ -437,17 +448,45 @@ def _format_pairs(
     return output
 
 
-def _paired_line(left: str, right: str, width: int) -> str:
-    if len(left) > width or len(right) > width:
-        raise ValueError("Ship field exceeded its fixed printer column")
-    line = (
-        left.ljust(width)
-        + (" " * COLUMN_GAP)
-        + right.ljust(width)
-    )
+def _column_slot_lines(lines: Sequence[str], width: int) -> list[str]:
+    fixed: list[str] = []
+    for line in lines or ("",):
+        fixed.extend(_wrap_ascii(line, width) if line.strip() else [""])
+    return fixed or [""]
+
+
+def _fixed_paired_line(left: str, right: str, width: int) -> str:
+    left_line = _fit_one_line(_ascii(left), width)
+    right_line = _fit_one_line(_ascii(right), width)
+    line = left_line.ljust(width) + (" " * COLUMN_GAP) + right_line.ljust(width)
     if len(line) > FONT_B_PRINTABLE_WIDTH:
         raise ValueError("Combined ship row exceeded the printer-safe width")
-    return _ascii(line, strip=False).rstrip() + "\n"
+    return line + "\n"
+
+
+def _append_unpaired_block(
+    output: list[ReceiptSegment],
+    block: list[list[str]],
+    width: int,
+) -> None:
+    """Retain the established final single-ship layout unchanged."""
+    for slot_index, slot_lines in enumerate(block):
+        if not any(slot_lines):
+            continue
+        for line in slot_lines:
+            if len(line) > width:
+                raise ValueError("Ship field exceeded its fixed printer column")
+            existing_line = (
+                line.ljust(width) + (" " * COLUMN_GAP) + "".ljust(width)
+            )
+            _append_segment(
+                output,
+                ReceiptSegment(
+                    FONT_B,
+                    _ascii(existing_line, strip=False).rstrip() + "\n",
+                    emphasized=slot_index == 0,
+                ),
+            )
 
 
 def _append_segment(

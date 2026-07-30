@@ -73,6 +73,44 @@ def test_column_wrapping_never_spills_into_other_column(
     )
 
 
+def test_optional_fields_are_fixed_width_and_isolated_by_column():
+    left = [
+        ["LEFT SHIP"],
+        ["DEST Left destination wraps inside its own column"],
+        [""],
+        ["ETA 30 Jul 0800 UTC"],
+    ]
+    right = [
+        ["RIGHT SHIP"],
+        [""],
+        ["DEST Right"],
+        [""],
+    ]
+
+    lines = PrinterReceipt(tuple(_format_pairs([left, right], 25))).text.splitlines()
+
+    paired = lines[:-1]
+    assert paired
+    assert all(len(line) == FONT_B_PRINTABLE_WIDTH for line in paired)
+    assert all(line[25:29] == " " * COLUMN_GAP for line in paired)
+    assert all("Right" not in line[:25] for line in paired)
+    assert all("Left" not in line[29:] for line in paired)
+    assert any(line[:25].strip().startswith("DEST Left") for line in paired)
+    assert any(line[29:].strip() == "DEST Right" for line in paired)
+    assert any(line[:25].strip().startswith("ETA 30 Jul") for line in paired)
+
+
+def test_blank_optional_fields_reserve_paired_rows():
+    left = [["LEFT"], [""], ["ETA LEFT"]]
+    right = [["RIGHT"], [""], ["ETA RIGHT"]]
+
+    lines = PrinterReceipt(tuple(_format_pairs([left, right], 25))).text.splitlines()
+
+    assert lines[1] == " " * FONT_B_PRINTABLE_WIDTH
+    assert lines[2][:25].strip() == "ETA LEFT"
+    assert lines[2][29:].strip() == "ETA RIGHT"
+
+
 def test_odd_ship_count_leaves_final_right_column_empty(
     fleet, positions, report_time
 ):
