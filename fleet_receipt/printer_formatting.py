@@ -276,6 +276,11 @@ def _ship_slots(
 ) -> list[list[str]]:
     status, speed, course = _movement_rows(position, width)
     destination, eta = _voyage_lines(vessel.voyage, width)
+    stationary_status = _stationary_status_label(position)
+    if stationary_status and not destination and not eta:
+        status = stationary_status
+        speed = "-" * width
+        course = " "
     age_label = f"AIS {_compact_age(vessel.age)}"
     location_fields = [_receipt_location(vessel.location)]
     if vessel.landmark:
@@ -322,10 +327,8 @@ def _movement_rows(
     normalized = " ".join(status.upper().split())
     if underway:
         visible_status = "UNDERWAY"
-    elif normalized in {"AT ANCHOR", "ANCHORED"}:
-        visible_status = "AT ANCHOR"
-    elif normalized == "MOORED":
-        visible_status = "MOORED"
+    elif _stationary_status_label(position):
+        visible_status = _stationary_status_label(position) or ""
     elif normalized in {
         "NAVIGATIONAL STATUS UNAVAILABLE",
         "UNDEFINED / DEFAULT",
@@ -350,6 +353,17 @@ def _movement_rows(
     # A single space forces the paired renderer to retain the reserved row
     # even when neither ship has a value for it.
     return visible_status, speed or " ", course or " "
+
+
+def _stationary_status_label(position: Position) -> Optional[str]:
+    normalized = " ".join(
+        navigational_status(position.navigational_status).upper().split()
+    )
+    if normalized in {"AT ANCHOR", "ANCHORED"}:
+        return "ANCHORED"
+    if normalized in {"MOORED", "ALONGSIDE"}:
+        return "MOORED"
+    return None
 
 
 def _fit_one_line(value: str, width: int) -> str:

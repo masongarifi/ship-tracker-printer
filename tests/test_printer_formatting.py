@@ -203,7 +203,81 @@ def test_anchored_keeps_reserved_speed_and_course_rows(positions):
         course_degrees=None,
     )
 
-    assert _movement_rows(position, 26) == ("AT ANCHOR", " ", " ")
+    assert _movement_rows(position, 26) == ("ANCHORED", " ", " ")
+
+
+def test_stationary_ship_uses_one_safe_separator_and_keeps_card_height(
+    positions,
+):
+    vessel = VesselBrief(
+        name="ROTTERDAM",
+        location="Stavanger, Norway",
+        landmark=None,
+        coordinates="59 07.4N 010 07.4E",
+        movement="Moored",
+        voyage=None,
+        utc_time="12:00",
+        local_time="04:00 (Seattle)",
+        age_heading="Updated",
+        age="2 min ago",
+    )
+    position = replace(
+        positions["rotterdam"],
+        navigational_status="Moored",
+        speed_knots=0,
+        course_degrees=None,
+        destination=None,
+        reported_eta=None,
+    )
+
+    slots = _ship_slots(vessel, position, 25)
+
+    assert len(slots) == 11
+    assert slots[3] == ["MOORED"]
+    assert slots[4] == ["-" * 25]
+    assert slots[5] == [" "]
+    assert slots[6] == [""]
+    assert slots[7] == [""]
+    assert not any(
+        label in line
+        for slot in slots[3:8]
+        for line in slot
+        for label in ("DEST", "SPD", "CRS", "ETA")
+    )
+
+
+def test_anchored_and_alongside_use_matching_stationary_labels(positions):
+    vessel = VesselBrief(
+        name="TEST SHIP",
+        location="Test Port",
+        landmark=None,
+        coordinates="01 00.0N 001 00.0E",
+        movement="",
+        voyage=None,
+        utc_time="12:00",
+        local_time="04:00 (Seattle)",
+        age_heading="Updated",
+        age="2 min ago",
+    )
+    anchored = replace(
+        positions["rotterdam"],
+        navigational_status="At anchor",
+        destination=None,
+        reported_eta=None,
+    )
+    alongside = replace(
+        anchored,
+        navigational_status="Alongside",
+    )
+
+    assert _ship_slots(vessel, anchored, 25)[3:5] == [
+        ["ANCHORED"],
+        ["-" * 25],
+    ]
+    assert _ship_slots(vessel, alongside, 25)[3:5] == [
+        ["MOORED"],
+        ["-" * 25],
+    ]
 
 
 def test_unknown_and_long_status_fit_one_reserved_line(positions):
@@ -348,7 +422,7 @@ def test_left_and_right_status_rows_stay_aligned(
 
     assert lines[status_index][:25].strip() == "MOORED"
     assert lines[status_index][29:].strip() == "UNDERWAY"
-    assert lines[status_index + 1][:25].strip() == ""
+    assert lines[status_index + 1][:25] == "-" * 25
     assert lines[status_index + 1][29:].strip() == "12.4 kn"
     assert lines[status_index + 2][:25].strip() == ""
     assert lines[status_index + 2][29:].strip() == "123 deg SE"
