@@ -8,6 +8,7 @@ from fleet_receipt.unlocode import (
     build_database_from_archive,
     database_status,
     lookup_unlocode,
+    nearest_unlocode,
 )
 
 
@@ -15,17 +16,17 @@ def make_archive(path: Path) -> None:
     parts = {
         CSV_PARTS[0]: (
             ",GB,,.UNITED KINGDOM,,,,,,,,\n"
-            ",GB,DVR,Dover,Dover,,1-------,AA,2501,,,,\n"
+            ",GB,DVR,Dover,Dover,,1-------,AA,2501,,5108N 00119E,\n"
             ",JP,,.JAPAN,,,,,,,,\n"
-            ",JP,TYO,Tokyo,Tokyo,13,1--4----,AA,2501,,,,\n"
+            ",JP,TYO,Tokyo,Tokyo,13,1--4----,AA,2501,,3541N 13941E,\n"
         ),
         CSV_PARTS[1]: (
             ",US,,.UNITED STATES,,,,,,,,\n"
-            ",US,SEA,Seattle,Seattle,WA,1--4----,AA,2501,,,,\n"
+            ",US,SEA,Seattle,Seattle,WA,1--4----,AA,2501,,4736N 12220W,\n"
         ),
         CSV_PARTS[2]: (
             ",CA,,.CANADA,,,,,,,,\n"
-            ",CA,VAN,Vancouver,Vancouver,BC,1--4----,AA,2501,,,,\n"
+            ",CA,VAN,Vancouver,Vancouver,BC,1--4----,AA,2501,,4915N 12307W,\n"
         ),
         SUBDIVISIONS_CSV: (
             "JP,13,Tokyo,Prefecture\n"
@@ -61,6 +62,21 @@ def test_database_status_records_release_and_count(tmp_path):
     assert status["available"] is True
     assert status["release"] == "2025-1"
     assert status["location_count"] == 4
+
+
+def test_nearest_populated_place_uses_coordinates_and_human_label(tmp_path):
+    archive = tmp_path / "unlocode.zip"
+    database = tmp_path / "unlocode.sqlite3"
+    make_archive(archive)
+    build_database_from_archive(archive, database)
+
+    place = nearest_unlocode(47.61, -122.34, 25 * 1.852, database)
+
+    assert place is not None
+    distance, label, kind = place
+    assert distance < 2
+    assert label == "Seattle, Washington"
+    assert kind == "city"
 
 
 def test_destination_formatter_uses_local_complete_index(tmp_path, monkeypatch):

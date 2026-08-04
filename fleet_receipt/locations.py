@@ -2,6 +2,9 @@ import math
 from typing import Optional, Tuple
 
 from .models import Location, Position
+from .unlocode import nearest_unlocode
+
+STATIONARY_PLACE_LIMIT_KM = 25 * 1.852
 
 
 # Ordered from the most specific marine feature to broad ocean coverage.
@@ -92,13 +95,13 @@ def get_friendly_location(latitude: float, longitude: float) -> str:
     """Return an offline, human-readable marine location for a coordinate."""
     _validate_coordinates(latitude, longitude)
 
-    port_area = _containing_port(latitude, longitude)
-    if port_area is not None:
-        return port_area[0]
-
     city_area = _containing_city(latitude, longitude)
     if city_area is not None:
         return city_area[0]
+
+    port_area = _containing_port(latitude, longitude)
+    if port_area is not None:
+        return port_area[0]
 
     port = _nearest_port(latitude, longitude)
     if port is not None and port[0] <= 9.26:  # 5 nautical miles
@@ -119,11 +122,11 @@ def get_friendly_location(latitude: float, longitude: float) -> str:
 def get_nearest_landmark(latitude: float, longitude: float) -> Optional[str]:
     """Return distance and bearing from a useful nearby major port."""
     _validate_coordinates(latitude, longitude)
+    if _containing_city(latitude, longitude) is not None:
+        return None
     port_area = _containing_port(latitude, longitude)
     if port_area is not None:
         return port_area[1]
-    if _containing_city(latitude, longitude) is not None:
-        return None
     port = _nearest_port(latitude, longitude)
     if port is None or port[0] <= 9.26 or port[0] > 277.8:
         return None
@@ -140,20 +143,32 @@ def resolve_location(position: Position) -> Location:
     name = get_friendly_location(position.latitude, position.longitude)
     timezone_name: Optional[str] = None
     kind = "marine"
+    distance_km: Optional[float] = None
 
-    port_area = _containing_port(position.latitude, position.longitude)
     city_area = _containing_city(position.latitude, position.longitude)
+    port_area = _containing_port(position.latitude, position.longitude)
     port = _nearest_port(position.latitude, position.longitude)
     stationary_port_limit = _stationary_port_limit(position.navigational_status)
-    if port_area is not None:
-        timezone_name = port_area[6]
-        kind = "port"
-    elif city_area is not None:
+    place_limit = stationary_port_limit or 9.26
+    indexed_place = nearest_unlocode(
+        position.latitude, position.longitude, place_limit
+    )
+    if city_area is not None:
         timezone_name = city_area[5]
         kind = "city"
+    elif port_area is not None:
+        name = port_area[1]
+        timezone_name = port_area[6]
+        kind = "port"
+    elif indexed_place is not None:
+        distance, name, kind = indexed_place
+        distance_km = distance
+        if _is_anchored(position.navigational_status) and distance > 9.26:
+            name = f"Anchored off {name}"
     elif port is not None and port[0] <= 9.26:
         timezone_name = port[5]
         kind = "port"
+        distance_km = port[0]
     elif (
         port is not None
         and stationary_port_limit is not None
@@ -162,22 +177,25 @@ def resolve_location(position: Position) -> Location:
         _, port_name, region, _, _, timezone_name = port
         name = f"{port_name}, {region}"
         kind = "port"
+        distance_km = port[0]
     if timezone_name is None:
         area = _marine_area(position.latitude, position.longitude)
         timezone_name = area[5] if area is not None else None
     if timezone_name is None:
         timezone_name = position.broad_timezone
-    return Location(name, timezone_name, kind, port[0] if kind == "port" and port else None)
+    return Location(name, timezone_name, kind, distance_km)
 
 
 def _stationary_port_limit(status: str) -> Optional[float]:
     """Return a conservative port/anchorage search radius in kilometres."""
     normalized = " ".join(status.strip().casefold().split())
-    if normalized == "moored":
-        return 25.0
-    if normalized in {"anchored", "at anchor"}:
-        return 37.04  # 20 nautical miles covers normal outer anchorages.
+    if normalized in {"moored", "anchored", "at anchor"}:
+        return STATIONARY_PLACE_LIMIT_KM
     return None
+
+
+def _is_anchored(status: str) -> bool:
+    return " ".join(status.strip().casefold().split()) in {"anchored", "at anchor"}
 
 
 def format_coordinates(latitude: float, longitude: float) -> str:

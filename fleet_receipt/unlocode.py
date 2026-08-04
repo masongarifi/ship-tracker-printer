@@ -1,5 +1,6 @@
 import csv
 import io
+import math
 import os
 import sqlite3
 import tempfile
@@ -17,6 +18,7 @@ UNLOCODE_DOWNLOAD_URL = (
     "-/jobs/artifacts/2025-1/download?job=package-release"
 )
 UNLOCODE_DATABASE_NAME = "unlocode.sqlite3"
+UNLOCODE_SCHEMA_VERSION = "2"
 CSV_PARTS = (
     "release/csv/UNLOCODE CodeListPart1.csv",
     "release/csv/UNLOCODE CodeListPart2.csv",
@@ -39,10 +41,11 @@ def unlocode_available(path: Optional[Path] = None) -> bool:
         return False
     try:
         with closing(sqlite3.connect(database)) as connection:
-            row = connection.execute(
-                "SELECT value FROM metadata WHERE key = 'release'"
-            ).fetchone()
-        return row is not None
+            values = dict(connection.execute("SELECT key, value FROM metadata"))
+        return (
+            values.get("release") is not None
+            and values.get("schema_version") == UNLOCODE_SCHEMA_VERSION
+        )
     except sqlite3.Error:
         return False
 
@@ -84,6 +87,61 @@ def lookup_unlocode(code: str, path: Optional[Path] = None) -> Optional[str]:
     elif country and country.casefold() != location.casefold():
         qualifiers.append(country)
     return ", ".join((location, *qualifiers))
+
+
+def nearest_unlocode(
+    latitude: float,
+    longitude: float,
+    max_distance_km: float,
+    path: Optional[Path] = None,
+) -> Optional[tuple[float, str, str]]:
+    """Return the nearest indexed populated place as (km, label, kind)."""
+    database = Path(path) if path is not None else default_unlocode_path()
+    if not database.exists():
+        return None
+    latitude_span = max_distance_km / 110.574
+    longitude_span = max_distance_km / max(1.0, 111.320 * math.cos(math.radians(latitude)))
+    try:
+        with closing(sqlite3.connect(database)) as connection:
+            rows = connection.execute(
+                """
+                SELECT locations.name, locations.country_code, countries.name,
+                       subdivisions.name, locations.function,
+                       locations.latitude, locations.longitude
+                FROM locations
+                LEFT JOIN countries ON countries.code = locations.country_code
+                LEFT JOIN subdivisions
+                    ON subdivisions.country_code = locations.country_code
+                    AND subdivisions.code = locations.subdivision_code
+                WHERE locations.latitude BETWEEN ? AND ?
+                  AND locations.longitude BETWEEN ? AND ?
+                """,
+                (
+                    latitude - latitude_span,
+                    latitude + latitude_span,
+                    longitude - longitude_span,
+                    longitude + longitude_span,
+                ),
+            ).fetchall()
+    except sqlite3.Error:
+        # Older indexes remain usable for destination lookup until the next sync.
+        return None
+    nearest = None
+    for name, country_code, country, subdivision, functions, place_lat, place_lon in rows:
+        distance = _haversine_km(latitude, longitude, place_lat, place_lon)
+        if distance > max_distance_km:
+            continue
+        qualifier = subdivision if country_code in {"US", "CA"} and subdivision else country
+        label = name if not qualifier or qualifier.casefold() == name.casefold() else f"{name}, {qualifier}"
+        marine_name = any(
+            word in name.casefold()
+            for word in ("port ", "harbor", "harbour", "terminal")
+        )
+        kind = "port" if marine_name else "city"
+        candidate = (distance, label, kind)
+        if nearest is None or candidate[0] < nearest[0]:
+            nearest = candidate
+    return nearest
 
 
 def sync_unlocode(
@@ -152,7 +210,9 @@ def build_database_from_archive(archive_path: Path, database_path: Path) -> int:
                     name_ascii TEXT,
                     subdivision_code TEXT,
                     function TEXT,
-                    status TEXT
+                    status TEXT,
+                    latitude REAL,
+                    longitude REAL
                 );
                 CREATE INDEX locations_country_code
                     ON locations (country_code, location_code);
@@ -164,7 +224,11 @@ def build_database_from_archive(archive_path: Path, database_path: Path) -> int:
                     count += _import_locations(connection, archive, member)
             connection.executemany(
                 "INSERT INTO metadata (key, value) VALUES (?, ?)",
-                (("release", UNLOCODE_RELEASE), ("location_count", str(count))),
+                (
+                    ("release", UNLOCODE_RELEASE),
+                    ("schema_version", UNLOCODE_SCHEMA_VERSION),
+                    ("location_count", str(count)),
+                ),
             )
             integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
             if integrity != "ok":
@@ -187,9 +251,10 @@ def database_status(path: Optional[Path] = None) -> dict:
     try:
         with closing(sqlite3.connect(database)) as connection:
             values = dict(connection.execute("SELECT key, value FROM metadata"))
+        current_schema = values.get("schema_version") == UNLOCODE_SCHEMA_VERSION
         result.update(
             {
-                "available": True,
+                "available": current_schema,
                 "release": values.get("release"),
                 "location_count": int(values.get("location_count", 0)),
             }
@@ -242,6 +307,7 @@ def _import_locations(
                 row[5].strip().upper() or None,
                 row[6].strip() or None,
                 row[7].strip() or None,
+                *_parse_coordinates(row[10].strip() if len(row) > 10 else ""),
             )
         )
     connection.executemany(
@@ -252,7 +318,8 @@ def _import_locations(
         INSERT OR REPLACE INTO locations (
             locode, country_code, location_code, name, name_ascii,
             subdivision_code, function, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            , latitude, longitude
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         locations,
     )
@@ -274,3 +341,30 @@ def _normalize_code(value: str) -> Optional[str]:
 
 def _title_country(value: str) -> str:
     return value.title().replace(" Of ", " of ").replace(" And ", " and ")
+
+
+def _parse_coordinates(value: str) -> tuple[Optional[float], Optional[float]]:
+    parts = value.upper().split()
+    if len(parts) != 2:
+        return None, None
+    try:
+        return _decimal_coordinate(parts[0], True), _decimal_coordinate(parts[1], False)
+    except (IndexError, ValueError):
+        return None, None
+
+
+def _decimal_coordinate(value: str, latitude: bool) -> float:
+    degree_digits = 2 if latitude else 3
+    degrees = int(value[:degree_digits])
+    minutes = int(value[degree_digits:-1])
+    decimal = degrees + minutes / 60
+    return -decimal if value[-1] in {"S", "W"} else decimal
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius = 6371.0088
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(a))

@@ -25,10 +25,10 @@ def test_broad_ocean_fallback_is_not_generic():
     assert get_friendly_location(58.0, -30.0) == "North Atlantic Ocean"
 
 
-def test_amsterdam_port_outranks_north_sea_and_rotterdam():
+def test_amsterdam_city_outranks_port_and_north_sea():
     latitude, longitude = 52.3783, 4.9167
-    assert get_friendly_location(latitude, longitude) == "Port of Amsterdam"
-    assert get_nearest_landmark(latitude, longitude) == "Amsterdam, Netherlands"
+    assert get_friendly_location(latitude, longitude) == "Amsterdam, Netherlands"
+    assert get_nearest_landmark(latitude, longitude) is None
     assert "Rotterdam" not in get_friendly_location(latitude, longitude)
 
 
@@ -71,3 +71,40 @@ def test_anchored_ship_in_normal_port_anchorage_prefers_stavanger():
 
 def test_underway_ship_offshore_keeps_body_of_water_fallback():
     assert resolve_location(_nieuw_statendam("Under way using engine")).name == "North Sea"
+
+
+def test_moored_oslo_uses_general_nearest_place_lookup(monkeypatch):
+    monkeypatch.setattr(
+        "fleet_receipt.locations.nearest_unlocode",
+        lambda latitude, longitude, limit: (2.1, "Oslo, Norway", "city"),
+    )
+    position = Position(
+        "Seabourn Ovation",
+        59 + 54.4 / 60,
+        10 + 43.0 / 60,
+        0.0,
+        None,
+        "Moored",
+        None,
+        None,
+        datetime(2026, 8, 4, tzinfo=timezone.utc),
+        "test",
+    )
+
+    location = resolve_location(position)
+
+    assert location.name == "Oslo, Norway"
+    assert location.kind == "city"
+
+
+def test_anchored_outside_city_gets_anchored_off_wording(monkeypatch):
+    monkeypatch.setattr(
+        "fleet_receipt.locations.nearest_unlocode",
+        lambda latitude, longitude, limit: (18.52, "Juneau, Alaska", "city"),
+    )
+    position = Position(
+        "Test Ship", 58.1, -134.5, 0.0, None, "At anchor", None, None,
+        datetime(2026, 8, 4, tzinfo=timezone.utc), "test",
+    )
+
+    assert resolve_location(position).name == "Anchored off Juneau, Alaska"
