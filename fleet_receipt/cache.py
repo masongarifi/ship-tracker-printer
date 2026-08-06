@@ -100,7 +100,9 @@ class PositionCache:
                 (vessel_key, payload, now),
             )
 
-    def update_health(self, status: str, error: Optional[str] = None) -> None:
+    def update_health(
+        self, status: str, error: Optional[str] = None, **details: Any
+    ) -> None:
         health = {
             "source": "Terrestrial",
             "status": status,
@@ -108,6 +110,21 @@ class PositionCache:
             "checked_at": datetime.now().astimezone().isoformat(),
         }
         with self._connect() as connection:
+            previous_row = connection.execute(
+                "SELECT value FROM metadata WHERE key = 'health'"
+            ).fetchone()
+            if previous_row is not None:
+                try:
+                    previous = json.loads(previous_row["value"])
+                    for key in (
+                        "last_ais_message_received_at",
+                        "last_tracked_position_received_at",
+                    ):
+                        if key in previous:
+                            health[key] = previous[key]
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            health.update(details)
             connection.execute(
                 """
                 INSERT INTO metadata (key, value)

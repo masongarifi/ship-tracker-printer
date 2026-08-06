@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,13 @@ AISSTREAM_URL = "wss://stream.aisstream.io/v0/stream"
 WORLD_BOUNDING_BOX = [[[-90.0, -180.0], [90.0, 180.0]]]
 MAX_MMSIS_PER_SUBSCRIPTION = 50
 SUBSCRIPTION_ROTATION_SECONDS = 30.0
+POSITION_MESSAGE_TYPES = (
+    "PositionReport",
+    "StandardClassBPositionReport",
+    "ExtendedClassBPositionReport",
+)
+SUBSCRIPTION_MESSAGE_TYPES = (*POSITION_MESSAGE_TYPES, "ShipStaticData")
+LOGGER = logging.getLogger(__name__)
 
 
 class AISStreamError(RuntimeError):
@@ -83,19 +91,39 @@ class AISStreamProvider(PositionProvider):
         delay = 1
         while True:
             try:
-                if on_health:
-                    on_health("connecting", None)
+                _notify_health(
+                    on_health,
+                    "connecting",
+                    websocket_status="connecting",
+                    subscription_status="not_sent",
+                )
                 async with websockets.connect(AISSTREAM_URL, open_timeout=10) as websocket:
+                    LOGGER.info("AISstream WebSocket connected")
+                    _notify_health(
+                        on_health,
+                        "waiting_for_subscription",
+                        websocket_status="connected",
+                        subscription_status="pending",
+                    )
                     offset = 0
                     await _send_subscription(websocket, self.api_key, all_mmsis, offset)
+                    LOGGER.info(
+                        "AISstream subscription sent for %d tracked MMSIs; message_types=%s",
+                        len(subscription_window(all_mmsis, offset)),
+                        ",".join(SUBSCRIPTION_MESSAGE_TYPES),
+                    )
                     loop = asyncio.get_running_loop()
                     next_rotation = (
                         loop.time() + SUBSCRIPTION_ROTATION_SECONDS
                         if len(all_mmsis) > MAX_MMSIS_PER_SUBSCRIPTION
                         else None
                     )
-                    if on_health:
-                        on_health("connected", None)
+                    _notify_health(
+                        on_health,
+                        "waiting_for_data",
+                        websocket_status="connected",
+                        subscription_status="sent",
+                    )
                     delay = 1
                     while True:
                         if next_rotation is None:
@@ -116,6 +144,23 @@ class AISStreamProvider(PositionProvider):
                                 )
                                 continue
                         message = json.loads(payload)
+                        received_at = datetime.now(timezone.utc).isoformat()
+                        message_type = str(message.get("MessageType") or "unknown")
+                        mmsi = _message_mmsi(message)
+                        identity = _message_identity(message)
+                        LOGGER.info(
+                            "AIS message received: type=%s mmsi=%s vessel=%s",
+                            message_type,
+                            mmsi or "unknown",
+                            identity or "unknown",
+                        )
+                        _notify_health(
+                            on_health,
+                            "waiting_for_tracked_position",
+                            websocket_status="connected",
+                            subscription_status="sent",
+                            last_ais_message_received_at=received_at,
+                        )
                         if "error" in message:
                             raise AISStreamError(str(message["error"]))
                         static = static_data_from_message(message)
@@ -127,21 +172,61 @@ class AISStreamProvider(PositionProvider):
                                 enriched = _enrich_position(existing, details)
                                 latest_positions[mmsi] = enriched
                                 on_position(enriched)
+                                LOGGER.info(
+                                    "SQLite position written with static data: mmsi=%s vessel=%s",
+                                    mmsi,
+                                    enriched.vessel_name,
+                                )
                             continue
                         position = position_from_message(message, by_mmsi)
                         if position is not None:
-                            mmsi = str(
-                                message["Message"]["PositionReport"].get("UserID", "")
-                            )
                             position = _enrich_position(position, static_data.get(mmsi, {}))
                             latest_positions[mmsi] = position
+                            LOGGER.info(
+                                "Tracked vessel matched: mmsi=%s vessel=%s",
+                                mmsi,
+                                position.vessel_name,
+                            )
                             on_position(position)
+                            LOGGER.info(
+                                "SQLite position written: mmsi=%s vessel=%s timestamp=%s",
+                                mmsi,
+                                position.vessel_name,
+                                position.position_timestamp.isoformat(),
+                            )
+                            _notify_health(
+                                on_health,
+                                "healthy",
+                                websocket_status="connected",
+                                subscription_status="sent",
+                                last_ais_message_received_at=received_at,
+                                last_tracked_position_received_at=received_at,
+                            )
+                        else:
+                            LOGGER.info(
+                                "AIS message ignored: type=%s mmsi=%s tracked=%s",
+                                message_type,
+                                mmsi or "unknown",
+                                mmsi in by_mmsi,
+                            )
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                if on_health:
-                    on_health("error", str(exc))
+                safe_error = str(exc).replace(self.api_key, "[redacted]")
+                LOGGER.error(
+                    "AISstream error=%s; reconnecting in %s seconds",
+                    safe_error,
+                    delay,
+                )
+                _notify_health(
+                    on_health,
+                    "error",
+                    safe_error,
+                    websocket_status="disconnected",
+                    subscription_status="not_sent",
+                )
                 await asyncio.sleep(delay)
+                LOGGER.info("Reconnecting to AISstream")
                 delay = min(delay * 2, 60)
 
     async def _fetch(self, vessels: Sequence[Vessel]) -> Dict[str, Position]:
@@ -208,7 +293,7 @@ def build_subscription(api_key: str, mmsis: Sequence[str]) -> Dict[str, Any]:
         "APIKey": api_key.strip(),
         "BoundingBoxes": WORLD_BOUNDING_BOX,
         "FiltersShipMMSI": unique_mmsis,
-        "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
+        "FilterMessageTypes": list(SUBSCRIPTION_MESSAGE_TYPES),
     }
 
 
@@ -253,9 +338,10 @@ def _configured_by_mmsi(vessels: Sequence[Vessel]) -> Dict[str, Vessel]:
 def position_from_message(
     message: Dict[str, Any], vessels_by_mmsi: Dict[str, Vessel]
 ) -> Optional[Position]:
-    if message.get("MessageType") != "PositionReport":
+    message_type = message.get("MessageType")
+    if message_type not in POSITION_MESSAGE_TYPES:
         return None
-    body = message.get("Message", {}).get("PositionReport", {})
+    body = message.get("Message", {}).get(message_type, {})
     metadata = message.get("MetaData") or message.get("Metadata") or {}
     mmsi = str(body.get("UserID") or metadata.get("MMSI") or "")
     vessel = vessels_by_mmsi.get(mmsi)
@@ -280,6 +366,35 @@ def position_from_message(
         position_timestamp=_message_time(metadata.get("time_utc")),
         source="AISstream.io",
     )
+
+
+def _message_mmsi(message: Dict[str, Any]) -> str:
+    message_type = message.get("MessageType")
+    body = message.get("Message", {}).get(message_type, {})
+    metadata = message.get("MetaData") or message.get("Metadata") or {}
+    return str(body.get("UserID") or metadata.get("MMSI") or "")
+
+
+def _message_identity(message: Dict[str, Any]) -> str:
+    metadata = message.get("MetaData") or message.get("Metadata") or {}
+    message_type = message.get("MessageType")
+    body = message.get("Message", {}).get(message_type, {})
+    return str(metadata.get("ShipName") or body.get("Name") or "").strip(" @")
+
+
+def _notify_health(
+    callback: Optional[Callable[..., None]],
+    status: str,
+    error: Optional[str] = None,
+    **details: Any,
+) -> None:
+    if callback is None:
+        return
+    try:
+        callback(status, error, **details)
+    except TypeError:
+        # Keep third-party/two-argument callbacks compatible.
+        callback(status, error)
 
 
 def static_data_from_message(

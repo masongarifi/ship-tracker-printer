@@ -17,7 +17,12 @@ def test_subscription_filters_to_position_reports_and_mmsis():
     assert subscription["APIKey"] == "secret"
     assert subscription["BoundingBoxes"] == [[[-90.0, -180.0], [90.0, 180.0]]]
     assert subscription["FiltersShipMMSI"] == ["245206000", "244830547"]
-    assert subscription["FilterMessageTypes"] == ["PositionReport", "ShipStaticData"]
+    assert subscription["FilterMessageTypes"] == [
+        "PositionReport",
+        "StandardClassBPositionReport",
+        "ExtendedClassBPositionReport",
+        "ShipStaticData",
+    ]
 
 
 def test_empty_api_key_is_rejected():
@@ -69,6 +74,34 @@ def test_unconfigured_mmsi_is_ignored():
     }
 
     assert position_from_message(message, {}) is None
+
+
+@pytest.mark.parametrize(
+    "message_type",
+    ["StandardClassBPositionReport", "ExtendedClassBPositionReport"],
+)
+def test_class_b_position_reports_are_accepted(message_type):
+    vessel = Vessel("Holland America Line", "Eurodam", mmsi="245206000")
+    message = {
+        "MessageType": message_type,
+        "Message": {
+            message_type: {
+                "UserID": 245206000,
+                "Valid": True,
+                "Latitude": 47.62,
+                "Longitude": -122.35,
+                "Sog": 8.2,
+                "Cog": 90.0,
+            }
+        },
+        "MetaData": {"time_utc": "2026-08-06T15:30:00Z"},
+    }
+
+    position = position_from_message(message, {"245206000": vessel})
+
+    assert position is not None
+    assert position.latitude == 47.62
+    assert position.speed_knots == 8.2
 
 
 def test_static_data_extracts_destination_and_eta():

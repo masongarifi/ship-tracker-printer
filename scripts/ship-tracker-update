@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="${SHIP_TRACKER_REPO_DIR:-/home/mason/ship-tracker-printer}"
+python_bin="${SHIP_TRACKER_PYTHON:-${repo_dir}/.venv/bin/python}"
+
+log() {
+    printf '%s ship-tracker-updater: %s\n' "$(date --iso-8601=seconds)" "$*"
+}
+
+cd "$repo_dir"
+
+branch="$(git symbolic-ref --quiet --short HEAD)" || {
+    log "decision=skip reason=detached-HEAD"
+    exit 0
+}
+upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)" || {
+    log "branch=$branch upstream=none decision=skip reason=no-configured-upstream"
+    exit 0
+}
+remote="$(git config --get "branch.${branch}.remote")"
+if [[ -z "$remote" || "$remote" == "." ]]; then
+    log "branch=$branch upstream=$upstream decision=skip reason=invalid-remote"
+    exit 0
+fi
+
+log "fetching remote=$remote for branch=$branch upstream=$upstream"
+git fetch --prune "$remote"
+
+local_commit="$(git rev-parse HEAD)"
+remote_commit="$(git rev-parse "$upstream")"
+
+if [[ "$local_commit" == "$remote_commit" ]]; then
+    decision="equal-no-update"
+elif git merge-base --is-ancestor HEAD "$upstream"; then
+    decision="behind-update"
+elif git merge-base --is-ancestor "$upstream" HEAD; then
+    decision="ahead-no-update"
+else
+    decision="diverged-no-update"
+fi
+
+log "branch=$branch upstream=$upstream local=$local_commit remote=$remote_commit decision=$decision"
+
+if [[ "$decision" != "behind-update" ]]; then
+    exit 0
+fi
+
+# A fast-forward is the only automatic mutation considered safe. The ancestry
+# check above ensures this never discards local work or resolves divergence.
+git merge --ff-only "$upstream"
+"$python_bin" -m pip install -e "$repo_dir"
+systemctl restart ship-tracker-listener.service ship-tracker-web.service
+log "update complete; services restarted"

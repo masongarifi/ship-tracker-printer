@@ -1,0 +1,10 @@
+[Unit]
+Description=Update Ship Tracker Printer from its configured Git upstream
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=mason
+Environment=SHIP_TRACKER_REPO_DIR=/home/mason/ship-tracker-printer
+ExecStart=/usr/local/bin/ship-tracker-update

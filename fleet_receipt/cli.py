@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -114,6 +115,10 @@ def main(argv=None) -> int:
                 print(f"Locations: {status['location_count']}")
             return 0
         if args.command == "listen":
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            )
             fleet = load_fleet(profile="all")
             cache = PositionCache(args.cache) if args.cache else PositionCache()
             if not unlocode_available():
