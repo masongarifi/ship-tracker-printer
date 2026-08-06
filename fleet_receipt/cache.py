@@ -117,6 +117,7 @@ class PositionCache:
                 try:
                     previous = json.loads(previous_row["value"])
                     for key in (
+                        "last_raw_frame_received_at",
                         "last_ais_message_received_at",
                         "last_tracked_position_received_at",
                     ):

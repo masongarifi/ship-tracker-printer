@@ -16,6 +16,8 @@ AISSTREAM_URL = "wss://stream.aisstream.io/v0/stream"
 WORLD_BOUNDING_BOX = [[[-90.0, -180.0], [90.0, 180.0]]]
 MAX_MMSIS_PER_SUBSCRIPTION = 50
 SUBSCRIPTION_ROTATION_SECONDS = 30.0
+NO_FRAME_WARNING_SECONDS = 30.0
+RAW_FRAME_LOG_LIMIT = 2000
 POSITION_MESSAGE_TYPES = (
     "PositionReport",
     "StandardClassBPositionReport",
@@ -107,11 +109,6 @@ class AISStreamProvider(PositionProvider):
                     )
                     offset = 0
                     await _send_subscription(websocket, self.api_key, all_mmsis, offset)
-                    LOGGER.info(
-                        "AISstream subscription sent for %d tracked MMSIs; message_types=%s",
-                        len(subscription_window(all_mmsis, offset)),
-                        ",".join(SUBSCRIPTION_MESSAGE_TYPES),
-                    )
                     loop = asyncio.get_running_loop()
                     next_rotation = (
                         loop.time() + SUBSCRIPTION_ROTATION_SECONDS
@@ -122,29 +119,69 @@ class AISStreamProvider(PositionProvider):
                         on_health,
                         "waiting_for_data",
                         websocket_status="connected",
-                        subscription_status="sent",
+                        subscription_status="awaiting_first_frame",
                     )
                     delay = 1
                     while True:
-                        if next_rotation is None:
-                            payload = await websocket.recv()
-                        else:
-                            try:
-                                payload = await asyncio.wait_for(
-                                    websocket.recv(),
-                                    timeout=max(0, next_rotation - loop.time()),
-                                )
-                            except asyncio.TimeoutError:
+                        receive_deadline = (
+                            min(next_rotation, loop.time() + NO_FRAME_WARNING_SECONDS)
+                            if next_rotation is not None
+                            else loop.time() + NO_FRAME_WARNING_SECONDS
+                        )
+                        try:
+                            payload = await asyncio.wait_for(
+                                websocket.recv(),
+                                timeout=max(0, receive_deadline - loop.time()),
+                            )
+                        except asyncio.TimeoutError:
+                            LOGGER.warning(
+                                "AISstream delivered no raw WebSocket frames in %.0f seconds; "
+                                "socket remains connected and subscription acceptance is unconfirmed",
+                                NO_FRAME_WARNING_SECONDS,
+                            )
+                            if next_rotation is not None and loop.time() >= next_rotation:
                                 offset = _next_window_offset(offset, len(all_mmsis))
                                 await _send_subscription(
                                     websocket, self.api_key, all_mmsis, offset
                                 )
-                                next_rotation = (
-                                    loop.time() + SUBSCRIPTION_ROTATION_SECONDS
-                                )
-                                continue
+                                next_rotation = loop.time() + SUBSCRIPTION_ROTATION_SECONDS
+                            continue
+                        safe_raw = _redact(payload, self.api_key)
+                        LOGGER.info(
+                            "AISstream raw WebSocket frame received: bytes=%d payload=%s",
+                            len(payload),
+                            safe_raw[:RAW_FRAME_LOG_LIMIT],
+                        )
                         message = json.loads(payload)
                         received_at = datetime.now(timezone.utc).isoformat()
+                        if "error" in message:
+                            safe_server_error = _redact(str(message["error"]), self.api_key)
+                            LOGGER.error(
+                                "AISstream subscription rejected/error response: %s",
+                                safe_server_error,
+                            )
+                            _notify_health(
+                                on_health,
+                                "error",
+                                safe_server_error,
+                                websocket_status="connected",
+                                subscription_status="rejected",
+                                last_raw_frame_received_at=received_at,
+                            )
+                            raise AISStreamError(safe_server_error)
+                        if not message.get("MessageType"):
+                            LOGGER.info(
+                                "AISstream acknowledgement/status response received: %s",
+                                safe_raw[:RAW_FRAME_LOG_LIMIT],
+                            )
+                            _notify_health(
+                                on_health,
+                                "waiting_for_data",
+                                websocket_status="connected",
+                                subscription_status="acknowledgement_received",
+                                last_raw_frame_received_at=received_at,
+                            )
+                            continue
                         message_type = str(message.get("MessageType") or "unknown")
                         mmsi = _message_mmsi(message)
                         identity = _message_identity(message)
@@ -158,11 +195,10 @@ class AISStreamProvider(PositionProvider):
                             on_health,
                             "waiting_for_tracked_position",
                             websocket_status="connected",
-                            subscription_status="sent",
+                            subscription_status="data_received",
+                            last_raw_frame_received_at=received_at,
                             last_ais_message_received_at=received_at,
                         )
-                        if "error" in message:
-                            raise AISStreamError(str(message["error"]))
                         static = static_data_from_message(message)
                         if static is not None:
                             mmsi, details = static
@@ -198,7 +234,8 @@ class AISStreamProvider(PositionProvider):
                                 on_health,
                                 "healthy",
                                 websocket_status="connected",
-                                subscription_status="sent",
+                                subscription_status="data_received",
+                                last_raw_frame_received_at=received_at,
                                 last_ais_message_received_at=received_at,
                                 last_tracked_position_received_at=received_at,
                             )
@@ -212,7 +249,7 @@ class AISStreamProvider(PositionProvider):
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                safe_error = str(exc).replace(self.api_key, "[redacted]")
+                safe_error = _redact(str(exc), self.api_key)
                 LOGGER.error(
                     "AISstream error=%s; reconnecting in %s seconds",
                     safe_error,
@@ -318,7 +355,17 @@ async def _send_subscription(
     offset: int,
 ) -> None:
     window = subscription_window(mmsis, offset)
-    await websocket.send(json.dumps(build_subscription(api_key, window)))
+    subscription = build_subscription(api_key, window)
+    await websocket.send(json.dumps(subscription))
+    LOGGER.info(
+        "AISstream subscription JSON sent (acceptance unconfirmed): %s",
+        json.dumps({**subscription, "APIKey": "[REDACTED]"}, separators=(",", ":")),
+    )
+
+
+def _redact(value: Any, api_key: str) -> str:
+    text = str(value)
+    return text.replace(api_key, "[REDACTED]") if api_key else text
 
 
 def _next_window_offset(offset: int, vessel_count: int) -> int:

@@ -6,6 +6,7 @@ from fleet_receipt.models import Vessel
 from fleet_receipt.providers.aisstream import (
     AISStreamError,
     build_subscription,
+    _redact,
     position_from_message,
     static_data_from_message,
 )
@@ -28,6 +29,12 @@ def test_subscription_filters_to_position_reports_and_mmsis():
 def test_empty_api_key_is_rejected():
     with pytest.raises(AISStreamError, match="missing or empty"):
         build_subscription(" ", ["245206000"])
+
+
+def test_api_key_is_redacted_from_diagnostics():
+    assert _redact("server echoed secret-token", "secret-token") == (
+        "server echoed [REDACTED]"
+    )
 
 
 def test_position_report_maps_mmsi_to_configured_vessel():
