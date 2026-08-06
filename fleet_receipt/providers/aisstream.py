@@ -21,7 +21,6 @@ RAW_FRAME_LOG_LIMIT = 2000
 POSITION_MESSAGE_TYPES = (
     "PositionReport",
     "StandardClassBPositionReport",
-    "ExtendedClassBPositionReport",
 )
 SUBSCRIPTION_MESSAGE_TYPES = (*POSITION_MESSAGE_TYPES, "ShipStaticData")
 LOGGER = logging.getLogger(__name__)

@@ -21,7 +21,6 @@ def test_subscription_filters_to_position_reports_and_mmsis():
     assert subscription["FilterMessageTypes"] == [
         "PositionReport",
         "StandardClassBPositionReport",
-        "ExtendedClassBPositionReport",
         "ShipStaticData",
     ]
 
@@ -85,7 +84,7 @@ def test_unconfigured_mmsi_is_ignored():
 
 @pytest.mark.parametrize(
     "message_type",
-    ["StandardClassBPositionReport", "ExtendedClassBPositionReport"],
+    ["StandardClassBPositionReport"],
 )
 def test_class_b_position_reports_are_accepted(message_type):
     vessel = Vessel("Holland America Line", "Eurodam", mmsi="245206000")
