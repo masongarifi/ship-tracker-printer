@@ -446,11 +446,20 @@ def _feed_status(positions: Dict[str, Position], now: datetime) -> Dict[str, obj
     online = (
         age_seconds is not None and age_seconds < FEED_OFFLINE_AFTER_SECONDS
     )
+    if online:
+        label = "Live"
+    elif newest_utc is not None:
+        label = (
+            "AIS Receiver Offline Since "
+            f"{newest_utc.strftime('%Y-%m-%d %H:%M UTC')}"
+        )
+    else:
+        label = "AIS Receiver Offline"
     return {
         "online": online,
         "newest_ais_update": newest_utc.isoformat() if newest_utc else None,
         "age_seconds": age_seconds,
-        "label": "Live" if online else "AIS Receiver Offline",
+        "label": label,
     }
 
 
