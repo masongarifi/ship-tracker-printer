@@ -6,6 +6,7 @@
   --blue-500: #2186cf;
   --blue-100: #e9f4fc;
   --green-500: #31c77a;
+  --red-500: #e0453a;
   --ink: #132536;
   --muted: #647586;
   --line: #dce4ea;
@@ -125,6 +126,14 @@ main,
 .live-indicator span {
   color: var(--green-500);
   font-size: 1rem;
+}
+
+.live-indicator-offline {
+  color: var(--red-500);
+}
+
+.live-indicator-offline span {
+  color: var(--red-500);
 }
 
 main {
