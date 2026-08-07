@@ -10,7 +10,8 @@ from .ais_status import is_underway_status, navigational_status
 from .briefing import FleetBriefing, VesselBrief, build_fleet_briefing
 from .cache import PositionCache
 from .config import load_fleet, load_settings
-from .formatting import format_receipt
+from .feed_status import is_feed_offline
+from .formatting import OFFLINE_BANNER, format_receipt
 from .models import FleetData, Position
 
 FONT_A = "a"
@@ -109,6 +110,7 @@ def format_printer_receipt(
     feed_health: Optional[Mapping[str, object]] = None,
     group_by_fleet: bool = False,
     two_column: bool = True,
+    show_offline_banner: bool = False,
 ) -> PrinterReceipt:
     """Format CLI/thermal output without changing the web receipt formatter."""
     if not two_column:
@@ -124,6 +126,7 @@ def format_printer_receipt(
                         stale_after_hours=stale_after_hours,
                         feed_health=feed_health,
                         group_by_fleet=group_by_fleet,
+                        show_offline_banner=show_offline_banner,
                     ),
                 ),
             )
@@ -141,13 +144,18 @@ def format_printer_receipt(
     column_width = (small_width - COLUMN_GAP) // 2
     segments: list[ReceiptSegment] = []
 
-    header = [
-        "FLEET OPERATIONS BRIEF",
-        _report_timestamp(generated_at),
-        *briefing.summary,
-        f"AIS Source: {briefing.source}",
-        "=" * width,
-    ]
+    header = []
+    if show_offline_banner and is_feed_offline(positions, generated_at):
+        header.extend([OFFLINE_BANNER, ""])
+    header.extend(
+        [
+            "FLEET OPERATIONS BRIEF",
+            _report_timestamp(generated_at),
+            *briefing.summary,
+            f"AIS Source: {briefing.source}",
+            "=" * width,
+        ]
+    )
     segments.append(ReceiptSegment(FONT_A, _lines(header)))
 
     line_by_vessel = {
@@ -219,6 +227,7 @@ def render_cached_printer_report(
     generated_at: Optional[datetime] = None,
     width: Optional[int] = None,
     fleet_profile: str = "main",
+    show_offline_banner: bool = False,
 ) -> PrinterReceipt:
     active_cache = cache or PositionCache()
     settings = load_settings()
@@ -232,6 +241,7 @@ def render_cached_printer_report(
         feed_health=active_cache.health(),
         group_by_fleet=fleet_profile.casefold() == "all",
         two_column=bool(settings.get("TWO_COLUMN_PRINT", False)),
+        show_offline_banner=show_offline_banner,
     )
 
 

@@ -144,7 +144,7 @@ def main(argv=None) -> int:
                 print(f"fleet-receipt: {warning}", file=sys.stderr)
             return 0
         if args.command in {"preview", "print"}:
-            receipt = _generate_receipt(args)
+            receipt = _generate_receipt(args, show_offline_banner=args.command == "print")
             if args.command == "print":
                 warning = print_usb_receipt(receipt)
                 if warning:
@@ -171,7 +171,9 @@ def _datetime(value: str) -> datetime:
     return parsed
 
 
-def _generate_receipt(args: argparse.Namespace) -> PrinterReceipt:
+def _generate_receipt(
+    args: argparse.Namespace, show_offline_banner: bool = False
+) -> PrinterReceipt:
     """Build the canonical receipt used unchanged by preview and physical printing."""
     generated_at = _datetime(args.at) if args.at else datetime.now(timezone.utc)
     if args.cached:
@@ -180,6 +182,7 @@ def _generate_receipt(args: argparse.Namespace) -> PrinterReceipt:
             generated_at=generated_at,
             width=args.width,
             fleet_profile=args.fleet,
+            show_offline_banner=show_offline_banner,
         )
 
     fleet = load_fleet(profile=args.fleet)
@@ -202,6 +205,7 @@ def _generate_receipt(args: argparse.Namespace) -> PrinterReceipt:
         },
         group_by_fleet=args.fleet.casefold() == "all",
         two_column=bool(settings.get("TWO_COLUMN_PRINT", False)),
+        show_offline_banner=show_offline_banner,
     )
 
 

@@ -1,7 +1,8 @@
 import re
 from dataclasses import replace
+from datetime import timedelta
 
-from fleet_receipt.formatting import format_receipt
+from fleet_receipt.formatting import OFFLINE_BANNER, format_receipt
 from fleet_receipt.briefing import VesselBrief
 from fleet_receipt.models import FleetData
 from fleet_receipt.printer_formatting import (
@@ -15,6 +16,41 @@ from fleet_receipt.printer_formatting import (
     _ship_slots,
     format_printer_receipt,
 )
+
+
+def test_two_column_receipt_shows_offline_banner_when_requested_and_feed_is_stale(
+    fleet, positions, report_time
+):
+    stale_positions = {
+        name: replace(
+            position, position_timestamp=report_time - timedelta(hours=3)
+        )
+        for name, position in positions.items()
+    }
+    receipt = format_printer_receipt(
+        fleet,
+        stale_positions,
+        report_time,
+        width=42,
+        two_column=True,
+        show_offline_banner=True,
+    )
+    assert receipt.text.startswith(OFFLINE_BANNER)
+
+
+def test_two_column_receipt_omits_offline_banner_unless_requested(
+    fleet, positions, report_time
+):
+    stale_positions = {
+        name: replace(
+            position, position_timestamp=report_time - timedelta(hours=3)
+        )
+        for name, position in positions.items()
+    }
+    receipt = format_printer_receipt(
+        fleet, stale_positions, report_time, width=42, two_column=True
+    )
+    assert OFFLINE_BANNER not in receipt.text
 
 
 def test_two_column_ship_blocks_are_side_by_side(fleet, positions, report_time):

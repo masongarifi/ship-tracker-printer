@@ -1,6 +1,7 @@
 from dataclasses import replace
+from datetime import timedelta
 
-from fleet_receipt.formatting import format_receipt
+from fleet_receipt.formatting import OFFLINE_BANNER, format_receipt
 
 
 def test_every_vessel_appears_exactly_once(fleet, positions, report_time):
@@ -20,6 +21,39 @@ def test_underway_movement_is_one_compact_line(fleet, positions, report_time):
 def test_stale_warning(fleet, positions, report_time):
     receipt = format_receipt(fleet, positions, report_time)
     assert "Last AIS report 11 hours ago" in receipt
+
+
+def test_offline_banner_appears_when_requested_and_feed_is_stale(
+    fleet, positions, report_time
+):
+    stale_positions = {
+        name: replace(
+            position, position_timestamp=report_time - timedelta(hours=3)
+        )
+        for name, position in positions.items()
+    }
+    receipt = format_receipt(
+        fleet, stale_positions, report_time, show_offline_banner=True
+    )
+    assert receipt.startswith(OFFLINE_BANNER)
+
+
+def test_offline_banner_not_shown_unless_requested(fleet, positions, report_time):
+    stale_positions = {
+        name: replace(
+            position, position_timestamp=report_time - timedelta(hours=3)
+        )
+        for name, position in positions.items()
+    }
+    receipt = format_receipt(fleet, stale_positions, report_time)
+    assert OFFLINE_BANNER not in receipt
+
+
+def test_offline_banner_absent_when_feed_is_healthy(fleet, positions, report_time):
+    receipt = format_receipt(
+        fleet, positions, report_time, show_offline_banner=True
+    )
+    assert OFFLINE_BANNER not in receipt
 
 
 def test_missing_position_output(fleet, positions, report_time):

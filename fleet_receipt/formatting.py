@@ -3,8 +3,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Mapping, Optional
 
 from .briefing import build_fleet_briefing
+from .feed_status import is_feed_offline
 from .formatting_helpers import format_position_age
 from .models import FleetData, Position, Vessel
+
+OFFLINE_BANNER = "*****AISStream.io OFFLINE*****"
 
 
 def sorted_active_vessels(fleet: FleetData) -> List[Vessel]:
@@ -26,13 +29,17 @@ def format_receipt(
     stale_after_hours: float = 6,
     feed_health: Optional[Mapping[str, object]] = None,
     group_by_fleet: bool = False,
+    show_offline_banner: bool = False,
 ) -> str:
     if generated_at.tzinfo is None:
         raise ValueError("Report time must be timezone-aware")
     briefing = build_fleet_briefing(
         fleet, positions, generated_at, stale_after_hours, feed_health
     )
-    lines: List[str] = ["FLEET OPERATIONS BRIEF", _report_timestamp(generated_at)]
+    lines: List[str] = []
+    if show_offline_banner and is_feed_offline(positions, generated_at):
+        lines.extend([OFFLINE_BANNER, ""])
+    lines.extend(["FLEET OPERATIONS BRIEF", _report_timestamp(generated_at)])
     lines.extend(briefing.summary)
     lines.extend([f"AIS Source: {briefing.source}", "═" * width])
 

@@ -90,8 +90,8 @@ def test_print_command_selects_cached_data_and_uses_printer_generator(monkeypatc
     cached_calls = []
     printed = []
 
-    def fake_cached(cache, generated_at, width, fleet_profile):
-        cached_calls.append((width, fleet_profile))
+    def fake_cached(cache, generated_at, width, fleet_profile, show_offline_banner=False):
+        cached_calls.append((width, fleet_profile, show_offline_banner))
         return PrinterReceipt((ReceiptSegment("a", "CACHED RECEIPT\n"),))
 
     monkeypatch.setattr(cli, "render_cached_printer_report", fake_cached)
@@ -101,7 +101,7 @@ def test_print_command_selects_cached_data_and_uses_printer_generator(monkeypatc
     result = cli.main(["print", "--cached", "--fleet", "main", "--width", "42"])
 
     assert result == 0
-    assert cached_calls == [(42, "main")]
+    assert cached_calls == [(42, "main", True)]
     assert printed == [
         PrinterReceipt((ReceiptSegment("a", "CACHED RECEIPT\n"),))
     ]
@@ -112,8 +112,8 @@ def test_preview_and_print_use_same_receipt_generator(monkeypatch):
     previewed = []
     printed = []
 
-    def fake_generate(args: Namespace):
-        generated.append(args.command)
+    def fake_generate(args: Namespace, show_offline_banner: bool = False):
+        generated.append((args.command, show_offline_banner))
         return PrinterReceipt((ReceiptSegment("a", "SAME RECEIPT\n"),))
 
     monkeypatch.setattr(cli, "_generate_receipt", fake_generate)
@@ -126,7 +126,7 @@ def test_preview_and_print_use_same_receipt_generator(monkeypatch):
 
     assert cli.main(["preview", "--cached"]) == 0
     assert cli.main(["print", "--cached"]) == 0
-    assert generated == ["preview", "print"]
+    assert generated == [("preview", False), ("print", True)]
     assert previewed == ["SAME RECEIPT\n"]
     assert printed == [
         PrinterReceipt((ReceiptSegment("a", "SAME RECEIPT\n"),))
@@ -189,7 +189,9 @@ def test_print_command_handles_unavailable_printer(monkeypatch, capsys):
     monkeypatch.setattr(
         cli,
         "_generate_receipt",
-        lambda args: PrinterReceipt((ReceiptSegment("a", "receipt"),)),
+        lambda args, show_offline_banner=False: PrinterReceipt(
+            (ReceiptSegment("a", "receipt"),)
+        ),
     )
 
     def unavailable(receipt):
@@ -207,7 +209,9 @@ def test_printer_test_skips_fleet_data_and_runs_usb_diagnostic(monkeypatch):
     monkeypatch.setattr(
         cli,
         "_generate_receipt",
-        lambda args: pytest.fail("printer-test must not generate a fleet receipt"),
+        lambda args, show_offline_banner=False: pytest.fail(
+            "printer-test must not generate a fleet receipt"
+        ),
     )
 
     assert cli.main(["printer-test"]) == 0

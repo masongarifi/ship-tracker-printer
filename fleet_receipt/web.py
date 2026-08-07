@@ -14,6 +14,7 @@ from .cache import PositionCache
 from .config import ConfigurationError
 from .config import load_fleet, load_settings
 from .models import Position
+from .feed_status import FEED_OFFLINE_AFTER_SECONDS, newest_position_timestamp
 from .dashboard import (
     build_dashboard,
     build_ship_detail,
@@ -27,7 +28,6 @@ from .briefing import build_vessel_brief
 from .ais_status import navigational_status
 
 REFRESH_SECONDS = 30
-FEED_OFFLINE_AFTER_SECONDS = 2 * 60 * 60
 PACKAGE_ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=PACKAGE_ROOT / "templates")
 
@@ -433,10 +433,7 @@ def _aware_utc(value: datetime) -> datetime:
 
 
 def _feed_status(positions: Dict[str, Position], now: datetime) -> Dict[str, object]:
-    newest = max(
-        (position.position_timestamp for position in positions.values()),
-        default=None,
-    )
+    newest = newest_position_timestamp(positions)
     newest_utc = _aware_utc(newest) if newest is not None else None
     age_seconds = (
         max(0, int((now - newest_utc).total_seconds()))
