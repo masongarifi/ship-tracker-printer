@@ -63,6 +63,28 @@ It reconnects automatically and transactionally updates one SQLite row whenever
 a configured vessel transmits. Keep this process running as a background service
 on the Raspberry Pi.
 
+### Install the listener as a boot service
+
+The committed unit assumes the checkout lives at
+`/home/mason/projects/ship-tracker-printer`. If your `whoami` or `pwd` differs,
+edit the `User`, `WorkingDirectory`, and `ExecStart` values before installing it.
+
+```bash
+cd /home/mason/projects/ship-tracker-printer
+sudo cp systemd/ship-tracker-listener.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ship-tracker-listener.service
+sudo systemctl status ship-tracker-listener.service --no-pager
+```
+
+Logs and service management:
+
+```bash
+sudo journalctl -u ship-tracker-listener.service -f
+sudo systemctl restart ship-tracker-listener.service
+sudo systemctl stop ship-tracker-listener.service
+```
+
 ## Persistent cache storage
 
 The cache is deliberately outside the Git checkout and virtual environment.

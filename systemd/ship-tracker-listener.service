@@ -1,0 +1,16 @@
+[Unit]
+Description=Ship Tracker Printer AIS listener (continuously updates the position cache)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mason
+WorkingDirectory=/home/mason/projects/ship-tracker-printer
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/mason/projects/ship-tracker-printer/.venv/bin/python -m fleet_receipt listen
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
