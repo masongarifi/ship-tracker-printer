@@ -164,9 +164,31 @@ def test_health_reports_cache_summary(tmp_path) -> None:
         "status": "ok",
         "cache_database_available": True,
         "cached_vessels": 2,
+        "ais_feed_online": True,
         "newest_ais_update": "2026-07-23T15:55:00+00:00",
         "newest_ais_update_age_seconds": 300,
     }
+
+
+def test_live_indicator_shows_offline_when_feed_is_stale(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(received_at=NOW - timedelta(hours=3)))
+
+    response = _client(cache).get("/")
+
+    assert response.status_code == 200
+    assert "AIS Receiver Offline" in response.text
+    assert "live-indicator-offline" in response.text
+
+
+def test_live_indicator_shows_live_when_feed_is_fresh(tmp_path) -> None:
+    cache = PositionCache(tmp_path / "positions.sqlite3")
+    cache.update(_position(received_at=NOW - timedelta(minutes=5)))
+
+    response = _client(cache).get("/")
+
+    assert response.status_code == 200
+    assert "live-indicator-offline" not in response.text
 
 
 def test_empty_cache_is_served_without_error(tmp_path) -> None:
@@ -187,6 +209,7 @@ def test_empty_cache_is_served_without_error(tmp_path) -> None:
         "status": "ok",
         "cache_database_available": True,
         "cached_vessels": 0,
+        "ais_feed_online": False,
         "newest_ais_update": None,
         "newest_ais_update_age_seconds": None,
     }
