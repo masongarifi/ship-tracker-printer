@@ -177,7 +177,7 @@ def test_live_indicator_shows_offline_when_feed_is_stale(tmp_path) -> None:
     response = _client(cache).get("/")
 
     assert response.status_code == 200
-    assert "AIS Receiver Offline" in response.text
+    assert "AIS Receiver Offline Since 2026-07-23 13:00 UTC" in response.text
     assert "live-indicator-offline" in response.text
 
 
