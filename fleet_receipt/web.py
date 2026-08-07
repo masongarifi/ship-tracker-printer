@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from ipaddress import ip_address
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
@@ -13,6 +13,7 @@ from . import __version__
 from .cache import PositionCache
 from .config import ConfigurationError
 from .config import load_fleet, load_settings
+from .models import Position
 from .dashboard import (
     build_dashboard,
     build_ship_detail,
@@ -26,6 +27,7 @@ from .briefing import build_vessel_brief
 from .ais_status import navigational_status
 
 REFRESH_SECONDS = 30
+FEED_OFFLINE_AFTER_SECONDS = 2 * 60 * 60
 PACKAGE_ROOT = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=PACKAGE_ROOT / "templates")
 
@@ -63,11 +65,13 @@ def create_app(
     def profile_page(request: Request, fleet_profile: str, heading: str):
         refreshed_at = _aware_utc(clock())
         report = _render_profile(active_cache, refreshed_at, fleet_profile)
+        positions = active_cache.load()
         fleet_dashboard = build_dashboard(
             load_fleet(profile=fleet_profile),
-            active_cache.load(),
+            positions,
             refreshed_at,
         )
+        feed_status = _feed_status(positions, refreshed_at)
         navigation = (
             (
                 "HAL + Seabourn",
@@ -98,6 +102,7 @@ def create_app(
             context={
                 "report": report,
                 "fleet_dashboard": fleet_dashboard,
+                "feed_status": feed_status,
                 "refreshed_at": refreshed_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "heading": heading,
                 "navigation": navigation,
@@ -112,9 +117,10 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def dashboard_page(request: Request):
         generated_at = _aware_utc(clock())
+        positions = active_cache.load()
         dashboard = build_dashboard(
             load_fleet(profile="all"),
-            active_cache.load(),
+            positions,
             generated_at,
         )
         return TEMPLATES.TemplateResponse(
@@ -122,6 +128,7 @@ def create_app(
             name="dashboard.html",
             context={
                 "dashboard": dashboard,
+                "feed_status": _feed_status(positions, generated_at),
                 "version": __version__,
                 "page_title": "Live Cruise Fleet Dashboard",
                 "page_subtitle": "Live Cruise Fleet Dashboard",
@@ -287,6 +294,7 @@ def create_app(
                     }
                     for vessel in results
                 ],
+                "feed_status": _feed_status(active_cache.load(), _aware_utc(clock())),
                 "version": __version__,
                 "page_title": "Ship Search",
                 "page_subtitle": "Ship Search",
@@ -300,13 +308,16 @@ def create_app(
         vessel = vessel_for_slug(fleet, slug)
         if vessel is None:
             raise HTTPException(status_code=404, detail="Ship not found")
-        position = active_cache.load().get(vessel.name.casefold())
-        ship = build_ship_detail(vessel, position, _aware_utc(clock()))
+        positions = active_cache.load()
+        position = positions.get(vessel.name.casefold())
+        now = _aware_utc(clock())
+        ship = build_ship_detail(vessel, position, now)
         return TEMPLATES.TemplateResponse(
             request=request,
             name="ship.html",
             context={
                 "ship": ship,
+                "feed_status": _feed_status(positions, now),
                 "version": __version__,
                 "page_title": vessel.name,
                 "page_subtitle": "Vessel Details",
@@ -387,22 +398,14 @@ def create_app(
     def health():
         now = _aware_utc(clock())
         positions = active_cache.load()
-        newest = max(
-            (position.position_timestamp for position in positions.values()),
-            default=None,
-        )
-        newest_utc = _aware_utc(newest) if newest is not None else None
-        age_seconds = (
-            max(0, int((now - newest_utc).total_seconds()))
-            if newest_utc is not None
-            else None
-        )
+        feed_status = _feed_status(positions, now)
         return {
             "status": "ok",
             "cache_database_available": active_cache.path.exists(),
             "cached_vessels": len(positions),
-            "newest_ais_update": newest_utc.isoformat() if newest_utc else None,
-            "newest_ais_update_age_seconds": age_seconds,
+            "ais_feed_online": feed_status["online"],
+            "newest_ais_update": feed_status["newest_ais_update"],
+            "newest_ais_update_age_seconds": feed_status["age_seconds"],
         }
 
     return app
@@ -427,6 +430,28 @@ def _aware_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _feed_status(positions: Dict[str, Position], now: datetime) -> Dict[str, object]:
+    newest = max(
+        (position.position_timestamp for position in positions.values()),
+        default=None,
+    )
+    newest_utc = _aware_utc(newest) if newest is not None else None
+    age_seconds = (
+        max(0, int((now - newest_utc).total_seconds()))
+        if newest_utc is not None
+        else None
+    )
+    online = (
+        age_seconds is not None and age_seconds < FEED_OFFLINE_AFTER_SECONDS
+    )
+    return {
+        "online": online,
+        "newest_ais_update": newest_utc.isoformat() if newest_utc else None,
+        "age_seconds": age_seconds,
+        "label": "Live" if online else "AIS Receiver Offline",
+    }
 
 
 def _is_loopback(host: str) -> bool:

@@ -22,7 +22,7 @@
       <nav class="top-nav" aria-label="Page navigation">
         <a class="home-link button button-secondary" href="{{ url_for('dashboard_page') }}">← Fleet Tracker Home</a>
         <span class="page-context">{{ page_title }}</span>
-        <span class="live-indicator"><span aria-hidden="true">●</span> Live</span>
+        <span class="live-indicator{{ '' if feed_status.online else ' live-indicator-offline' }}"><span aria-hidden="true">●</span> {{ feed_status.label if feed_status else 'Live' }}</span>
       </nav>
     </div>
   </header>
