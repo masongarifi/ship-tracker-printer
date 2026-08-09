@@ -18,6 +18,23 @@ from fleet_receipt.printer_formatting import (
 )
 
 
+def test_header_and_footer_segments_are_centered(fleet, positions, report_time):
+    receipt = format_printer_receipt(
+        fleet, positions, report_time, width=42, two_column=True
+    )
+    assert receipt.segments[0].align == "center"
+    assert receipt.segments[0].text.startswith("FLEET OPERATIONS BRIEF")
+    assert receipt.segments[-1].align == "center"
+    assert "Latest available AIS positions" in receipt.segments[-1].text
+
+
+def test_ship_listing_segments_stay_left_aligned(fleet, positions, report_time):
+    receipt = format_printer_receipt(
+        fleet, positions, report_time, width=42, two_column=True
+    )
+    assert all(segment.align == "left" for segment in receipt.segments[1:-1])
+
+
 def test_two_column_receipt_shows_offline_banner_when_requested_and_feed_is_stale(
     fleet, positions, report_time
 ):

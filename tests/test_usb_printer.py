@@ -148,12 +148,14 @@ def test_two_column_document_switches_to_small_font_for_ship_listings():
         printer_factory=factory_for(device)
     ).print_and_finish(receipt) is None
 
-    assert ("set", {"font": "a", "bold": False}) in device.calls
-    assert ("set", {"font": "b", "bold": True}) in device.calls
+    assert ("set", {"font": "a", "bold": False, "align": "left"}) in device.calls
+    assert ("set", {"font": "b", "bold": True, "align": "left"}) in device.calls
     assert ("text", "LEFT    RIGHT\n") in device.calls
-    bold_index = device.calls.index(("set", {"font": "b", "bold": True}))
+    bold_index = device.calls.index(
+        ("set", {"font": "b", "bold": True, "align": "left"})
+    )
     normal_index = device.calls.index(
-        ("set", {"font": "b", "bold": False}),
+        ("set", {"font": "b", "bold": False, "align": "left"}),
         bold_index + 1,
     )
     assert normal_index > bold_index

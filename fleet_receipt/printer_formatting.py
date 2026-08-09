@@ -88,6 +88,7 @@ class ReceiptSegment:
     font: str
     text: str
     emphasized: bool = False
+    align: str = "left"
 
 
 @dataclass(frozen=True)
@@ -156,7 +157,7 @@ def format_printer_receipt(
             "=" * width,
         ]
     )
-    segments.append(ReceiptSegment(FONT_A, _lines(header)))
+    segments.append(ReceiptSegment(FONT_A, _lines(header), align="center"))
 
     line_by_vessel = {
         vessel.name.upper(): vessel.cruise_line
@@ -215,6 +216,7 @@ def format_printer_receipt(
                     "Times are estimated",
                 ]
             ),
+            align="center",
         )
     )
     receipt = PrinterReceipt(tuple(segments))

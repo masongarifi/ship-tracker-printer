@@ -44,6 +44,7 @@ class EpsonUsbPrinter(PrinterBackend):
                         printer.set(
                             font=segment.font,
                             bold=segment.emphasized,
+                            align=segment.align,
                         )
                         printer.text(segment.text)
                 else:
