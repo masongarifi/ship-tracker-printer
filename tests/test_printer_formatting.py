@@ -10,6 +10,7 @@ from fleet_receipt.printer_formatting import (
     FONT_B_PRINTABLE_WIDTH,
     FONT_B,
     PrinterReceipt,
+    _append_unpaired_block,
     _format_pairs,
     _movement_rows,
     _receipt_location,
@@ -28,11 +29,49 @@ def test_header_and_footer_segments_are_centered(fleet, positions, report_time):
     assert "Latest available AIS positions" in receipt.segments[-1].text
 
 
-def test_ship_listing_segments_stay_left_aligned(fleet, positions, report_time):
+def test_fleet_titles_are_centered(fleet, positions, report_time):
     receipt = format_printer_receipt(
         fleet, positions, report_time, width=42, two_column=True
     )
-    assert all(segment.align == "left" for segment in receipt.segments[1:-1])
+    titles = [
+        segment
+        for segment in receipt.segments
+        if "\nHOLLAND AMERICA LINE\n" in segment.text
+        or "\nSEABOURN\n" in segment.text
+    ]
+    assert len(titles) == 2
+    assert all(segment.align == "center" for segment in titles)
+
+
+def test_paired_ship_rows_stay_left_aligned(fleet, positions, report_time):
+    receipt = format_printer_receipt(
+        fleet, positions, report_time, width=42, two_column=True
+    )
+    paired_row = next(
+        segment for segment in receipt.segments if "EURODAM" in segment.text
+    )
+    assert paired_row.align == "left"
+
+
+def test_odd_ship_out_block_is_centered_but_keeps_its_own_lines_left_justified():
+    output: list = []
+    block = [
+        ["ZUIDERDAM"],
+        ["Puget Sound"],
+        ["UNDERWAY CRS 090 at 12.0 kts"],
+    ]
+    _append_unpaired_block(output, block, width=30)
+
+    assert output
+    assert all(segment.align == "center" for segment in output)
+    combined_text = "".join(segment.text for segment in output)
+    non_blank_widths = {
+        len(line) for line in combined_text.splitlines() if line.strip()
+    }
+    assert len(non_blank_widths) == 1
+    for line in combined_text.splitlines():
+        if line.strip():
+            assert line == line.lstrip()
 
 
 def test_two_column_receipt_shows_offline_banner_when_requested_and_feed_is_stale(

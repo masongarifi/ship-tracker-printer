@@ -168,7 +168,9 @@ def format_printer_receipt(
         fleet, briefing, line_by_vessel, group_by_fleet
     ):
         segments.append(
-            ReceiptSegment(FONT_A, _lines(["", heading, "-" * width]))
+            ReceiptSegment(
+                FONT_A, _lines(["", heading, "-" * width]), align="center"
+            )
         )
         segments.extend(
             _format_pairs(
@@ -195,6 +197,7 @@ def format_printer_receipt(
                         "-" * width,
                     ]
                 ),
+                align="center",
             )
         )
         segments.extend(
@@ -495,24 +498,29 @@ def _append_unpaired_block(
     block: list[list[str]],
     width: int,
 ) -> None:
-    """Retain the established final single-ship layout unchanged."""
+    """Keep the lone ship's own rows left-justified, then center that block."""
+    rows: list[tuple[int, str]] = []
     for slot_index, slot_lines in enumerate(block):
         if not any(slot_lines):
             continue
         for line in slot_lines:
             if len(line) > width:
                 raise ValueError("Ship field exceeded its fixed printer column")
-            existing_line = (
-                line.ljust(width) + (" " * COLUMN_GAP) + "".ljust(width)
-            )
-            _append_segment(
-                output,
-                ReceiptSegment(
-                    FONT_B,
-                    _ascii(existing_line, strip=False).rstrip() + "\n",
-                    emphasized=slot_index == 0,
-                ),
-            )
+            rows.append((slot_index, line))
+    if not rows:
+        return
+    block_width = max((len(line) for _, line in rows if line.strip()), default=0)
+    for slot_index, line in rows:
+        padded = line.ljust(block_width) if line.strip() else ""
+        _append_segment(
+            output,
+            ReceiptSegment(
+                FONT_B,
+                _ascii(padded, strip=False) + "\n",
+                emphasized=slot_index == 0,
+                align="center",
+            ),
+        )
 
 
 def _append_segment(
@@ -522,12 +530,14 @@ def _append_segment(
         segments
         and segments[-1].font == segment.font
         and segments[-1].emphasized == segment.emphasized
+        and segments[-1].align == segment.align
     ):
         previous = segments[-1]
         segments[-1] = ReceiptSegment(
             previous.font,
             previous.text + segment.text,
             previous.emphasized,
+            previous.align,
         )
     else:
         segments.append(segment)
